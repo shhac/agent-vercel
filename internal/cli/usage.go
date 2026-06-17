@@ -38,6 +38,7 @@ CORE DOMAINS (see design-docs/cli-design.md)
   domain       list | get | inspect | records | cert | verify* | add* | rm*
   alias        list | set* | rm* | bypass*
   billing      charges [--by service|project]   (what is driving spend)
+  webhook      list [--project]                  (which events fire where)
   scope        list | current | set-default
   auth         add | list | test | set-default | remove | import-cli
   api          call <METHOD> <path>       (raw REST escape hatch)

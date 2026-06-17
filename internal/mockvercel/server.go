@@ -46,6 +46,7 @@ type Options struct {
 	Certs              map[string]map[string]any
 	Aliases            []map[string]any
 	Charges            []map[string]any
+	Webhooks           []map[string]any
 	// RuntimeLogsHang, when set, makes the runtime-logs handler hold the
 	// connection open after emitting its lines — simulating Vercel's
 	// open-ended stream so the client's bounded-window read can be tested.
@@ -73,6 +74,9 @@ func WithProjectCrons(c map[string]any) Option { return func(o *Options) { o.Pro
 func WithCustomEnvironments(e []map[string]any) Option {
 	return func(o *Options) { o.CustomEnvironments = e }
 }
+
+// WithWebhooks overrides the fixture webhooks.
+func WithWebhooks(w []map[string]any) Option { return func(o *Options) { o.Webhooks = w } }
 
 // WithRuntimeLogsHang makes the runtime-logs endpoint hold the connection open
 // after emitting its lines, simulating Vercel's open-ended log stream.
@@ -206,6 +210,10 @@ func defaults() *Options {
 			{"ServiceName": "Functions", "ChargeCategory": "Usage", "BilledCost": 12.50, "BillingCurrency": "USD", "ConsumedQuantity": 1000000.0, "ConsumedUnit": "invocations", "ChargePeriodStart": "2026-06-01T00:00:00Z", "ChargePeriodEnd": "2026-06-02T00:00:00Z", "Tags": map[string]any{"ProjectName": "web", "ProjectId": "prj_web"}},
 			{"ServiceName": "Bandwidth", "ChargeCategory": "Usage", "BilledCost": 40.00, "BillingCurrency": "USD", "ConsumedQuantity": 200.0, "ConsumedUnit": "GB", "ChargePeriodStart": "2026-06-01T00:00:00Z", "ChargePeriodEnd": "2026-06-02T00:00:00Z", "Tags": map[string]any{"ProjectName": "web", "ProjectId": "prj_web"}},
 			{"ServiceName": "Functions", "ChargeCategory": "Usage", "BilledCost": 3.00, "BillingCurrency": "USD", "ConsumedQuantity": 50000.0, "ConsumedUnit": "invocations", "ChargePeriodStart": "2026-06-01T00:00:00Z", "ChargePeriodEnd": "2026-06-02T00:00:00Z", "Tags": map[string]any{"ProjectName": "api", "ProjectId": "prj_api"}},
+		},
+		Webhooks: []map[string]any{
+			{"id": "hook_deploys", "url": "https://hooks.example.com/vercel", "events": []any{"deployment.created", "deployment.succeeded", "deployment.error"}, "projectIds": []any{"prj_web"}, "createdAt": int64(1716000000000), "updatedAt": int64(1716206800000)},
+			{"id": "hook_all", "url": "https://hooks.example.com/audit", "events": []any{"deployment.error"}, "createdAt": int64(1716010000000), "updatedAt": int64(1716010000000)},
 		},
 	}
 }
@@ -407,6 +415,24 @@ func New(opts ...Option) http.Handler {
 	}))
 	mux.HandleFunc("DELETE /v2/aliases/{id}", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"status": "SUCCESS"})
+	}))
+	mux.HandleFunc("GET /v1/webhooks", requireBearer(func(w http.ResponseWriter, r *http.Request) {
+		if pid := r.URL.Query().Get("projectId"); pid != "" {
+			filtered := make([]map[string]any, 0, len(o.Webhooks))
+			for _, wh := range o.Webhooks {
+				if ids, ok := wh["projectIds"].([]any); ok {
+					for _, id := range ids {
+						if id == pid {
+							filtered = append(filtered, wh)
+							break
+						}
+					}
+				}
+			}
+			writeJSON(w, http.StatusOK, filtered)
+			return
+		}
+		writeJSON(w, http.StatusOK, o.Webhooks)
 	}))
 	mux.HandleFunc("GET /v1/billing/charges", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
 		// FOCUS charges are JSONL; emit one object per line.

@@ -61,12 +61,16 @@ agent-vercel deployment list --state ERROR --target production --since 24h   # f
 agent-vercel deployment list --project my-app --limit 10
 agent-vercel deployment current my-app                  # what is live in prod (+ rolling release)
 agent-vercel deployment get dpl_…                       # one deployment, compact
+agent-vercel deployment checks dpl_… --failed           # which CI checks are blocking/failing
 agent-vercel deployment logs dpl_… --status 5xx         # build logs, filtered
 agent-vercel deployment runtime-logs dpl_… --level error --path /api
+agent-vercel project crons my-app                       # scheduled jobs + whether crons are on
+agent-vercel project custom-environments my-app         # discover custom envs (slug, branch, domains)
 agent-vercel env diff my-app                            # prod-vs-preview env var diff
 agent-vercel domain inspect example.com                 # missing DNS record / cert state
 agent-vercel alias list dpl_…                           # aliases + protection state
 agent-vercel billing charges --by service               # what is driving spend (last 30d)
+agent-vercel webhook list --project prj_…               # which events fire where
 ```
 
 `deployment list` is **cross-project** and filterable — the main thing the

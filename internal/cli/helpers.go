@@ -58,6 +58,15 @@ func putIf(m map[string]any, key, val string) {
 	}
 }
 
+// toAnySlice widens a []string into the []any an output row expects.
+func toAnySlice(ss []string) []any {
+	out := make([]any, len(ss))
+	for i, s := range ss {
+		out[i] = s
+	}
+	return out
+}
+
 // metaStr returns the first non-empty string value among the given meta keys.
 func metaStr(meta map[string]any, keys ...string) string {
 	for _, k := range keys {

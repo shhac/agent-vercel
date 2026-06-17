@@ -106,6 +106,12 @@ distinct from the agent-vercel access token (never readable).
 |---|---|
 | `billing charges` | `--from`/`--to` (date, RFC3339, or duration like 30d; default last 30d), `--by service\|project` to aggregate billed cost — "what's driving spend". `GET /v1/billing/charges` (FOCUS) |
 
+## webhook
+
+| Command | Notes |
+|---|---|
+| `webhook list` | `--project <id>` to filter; the scope's webhooks — url, subscribed events, target projects. "Is the deploy notification / CI integration wired up" |
+
 ## api (escape hatch)
 
 | Command | Notes |

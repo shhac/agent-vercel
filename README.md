@@ -68,6 +68,7 @@ agent-vercel usage                       # LLM-oriented overview
 | `domain` | `list`, `get`, `inspect`, `records`, `verify`*, `add`*, `rm`*, `cert` |
 | `alias` | `list`, `set`*, `rm`*, `bypass`* |
 | `billing` | `charges` (`--by service\|project`) |
+| `webhook` | `list` (`--project`) |
 | `api` | `call <METHOD> <path>` (raw escape hatch) |
 | `config` | `get`, `set`, `list`, `unset` |
 

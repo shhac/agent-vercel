@@ -149,11 +149,11 @@ func compactCustomEnv(raw json.RawMessage) (map[string]any, error) {
 		m["branch_matcher"] = e.BranchMatcher.Type + ":" + e.BranchMatcher.Pattern
 	}
 	if len(e.Domains) > 0 {
-		names := make([]any, 0, len(e.Domains))
-		for _, d := range e.Domains {
-			names = append(names, d.Name)
+		names := make([]string, len(e.Domains))
+		for i, d := range e.Domains {
+			names[i] = d.Name
 		}
-		m["domains"] = names
+		m["domains"] = toAnySlice(names)
 	}
 	putIf(m, "created", msToRFC3339(e.CreatedAt))
 	putIf(m, "updated", msToRFC3339(e.UpdatedAt))

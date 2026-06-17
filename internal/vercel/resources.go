@@ -47,6 +47,17 @@ func (c *Client) GetDeployment(ctx context.Context, idOrURL string) (json.RawMes
 	return c.Get(ctx, "/v13/deployments/"+url.PathEscape(idOrURL), nil)
 }
 
+// ListWebhooks — GET /v1/webhooks. The team/account webhooks (which events
+// they subscribe to and which projects they target). Optional projectId filter
+// via q. The payload may be a bare array or wrapped under "webhooks".
+func (c *Client) ListWebhooks(ctx context.Context, q url.Values) ([]json.RawMessage, error) {
+	raw, err := c.Get(ctx, "/v1/webhooks", q)
+	if err != nil {
+		return nil, err
+	}
+	return decodeKeyedArray(raw, "webhooks"), nil
+}
+
 // DeploymentChecks — GET /v1/deployments/{idOrUrl}/checks. The CI / integration
 // checks attached to a deployment (e.g. a failing check blocking promotion).
 // Not paginated; the items live under the "checks" key.
