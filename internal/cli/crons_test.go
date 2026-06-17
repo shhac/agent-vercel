@@ -32,6 +32,25 @@ func TestProjectCrons(t *testing.T) {
 	}
 }
 
+func TestProjectCronsFull(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	// --full returns the raw API payload (nested under "crons"), not the
+	// compact projection.
+	out, _, err := execCLI(t, srv.URL, "project", "crons", "web", "--full")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	m := decodeJSON(t, out)
+	if _, ok := m["crons"]; !ok {
+		t.Fatalf("--full should expose the raw crons envelope: %s", out)
+	}
+	if _, projected := m["jobs"]; projected {
+		t.Fatalf("--full should not carry the compact 'jobs' key: %s", out)
+	}
+}
+
 func TestProjectCronsDisabled(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New(mockvercel.WithProjectCrons(map[string]any{
 		"crons": map[string]any{

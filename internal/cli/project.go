@@ -82,15 +82,14 @@ func registerProject(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			if g.Full {
-				return printRaw(g, raw)
-			}
-			m, err := compactCrons(raw)
-			if err != nil {
-				return err
-			}
-			m["project"] = args[0]
-			return printSingle(g, m)
+			return getOne(g, raw, func(raw json.RawMessage) (map[string]any, error) {
+				m, err := compactCrons(raw)
+				if err != nil {
+					return nil, err
+				}
+				m["project"] = args[0]
+				return m, nil
+			})
 		},
 	}
 
