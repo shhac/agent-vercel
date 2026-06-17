@@ -24,8 +24,9 @@ raw Vercel payload (huge: project settings, attribution, checks).
 
 - deployment: `id, name, project_id, state, target, ready_substate, url,
   inspector_url, branch, sha, commit_message, creator, created, error_code,
-  error_message, custom_environment`
-- project: `id, name, framework, latest_prod_deployment, updated`
+  error_message, oom, checks, custom_environment`
+- project: `id, name, framework, node_version, repo, production_branch,
+  latest_prod_deployment, updated`
 - env var: `id, key, target[], type, git_branch, comment` (+ `value` with
   `--decrypt`)
 - domain: `name, apex, verified, verification[], redirect, intended_nameservers`

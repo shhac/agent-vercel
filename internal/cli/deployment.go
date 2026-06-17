@@ -196,6 +196,9 @@ type rawDeployment struct {
 		Email    string `json:"email"`
 	} `json:"creator"`
 	Meta              map[string]any `json:"meta"`
+	OomReport         string         `json:"oomReport"`
+	ChecksConclusion  string         `json:"checksConclusion"`
+	ChecksState       string         `json:"checksState"`
 	CustomEnvironment struct {
 		ID   string `json:"id"`
 		Slug string `json:"slug"`
@@ -244,6 +247,10 @@ func compactDeployment(raw json.RawMessage) (map[string]any, error) {
 	putIf(m, "inspector_url", d.InspectorURL)
 	putIf(m, "error_code", d.ErrorCode)
 	putIf(m, "error_message", d.ErrorMessage)
+	if d.OomReport != "" {
+		m["oom"] = true
+	}
+	putIf(m, "checks", firstNonEmpty(d.ChecksConclusion, d.ChecksState))
 	putIf(m, "created", msToRFC3339(created))
 	putIf(m, "creator", d.Creator.Username)
 	putIf(m, "branch", metaStr(d.Meta, "githubCommitRef", "gitlabCommitRef", "bitbucketCommitRef"))

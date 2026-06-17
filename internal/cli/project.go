@@ -74,10 +74,17 @@ func registerProject(root *cobra.Command, g *GlobalFlags) {
 }
 
 type rawProject struct {
-	ID                string `json:"id"`
-	Name              string `json:"name"`
-	Framework         string `json:"framework"`
-	UpdatedAt         int64  `json:"updatedAt"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Framework   string `json:"framework"`
+	NodeVersion string `json:"nodeVersion"`
+	UpdatedAt   int64  `json:"updatedAt"`
+	Link        struct {
+		Org              string `json:"org"`
+		Repo             string `json:"repo"`
+		Type             string `json:"type"`
+		ProductionBranch string `json:"productionBranch"`
+	} `json:"link"`
 	LatestDeployments []struct {
 		UID        string  `json:"uid"`
 		URL        string  `json:"url"`
@@ -93,6 +100,11 @@ func compactProject(raw json.RawMessage) (map[string]any, error) {
 	}
 	m := map[string]any{"id": p.ID, "name": p.Name}
 	putIf(m, "framework", p.Framework)
+	putIf(m, "node_version", p.NodeVersion)
+	if p.Link.Org != "" && p.Link.Repo != "" {
+		m["repo"] = p.Link.Org + "/" + p.Link.Repo
+	}
+	putIf(m, "production_branch", p.Link.ProductionBranch)
 	putIf(m, "updated", msToRFC3339(p.UpdatedAt))
 	for _, d := range p.LatestDeployments {
 		if d.Target != nil && *d.Target == "production" {

@@ -84,13 +84,15 @@ func defaults() *Options {
 				"target": "production", "errorCode": "BUILD_FAILED",
 				"errorMessage": "Command \"next build\" exited with 1",
 				"inspectorUrl": "https://vercel.com/acme/web/err", "created": int64(1716206500000),
+				"checksConclusion": "failed", "oomReport": "out-of-memory",
 				"creator": map[string]any{"username": "dev", "email": "dev@acme.com"},
 				"meta":    map[string]any{"githubCommitRef": "fix/build", "githubCommitSha": "def456", "githubCommitMessage": "wip"},
 			},
 		},
 		Projects: []map[string]any{
 			{
-				"id": "prj_web", "name": "web", "framework": "nextjs",
+				"id": "prj_web", "name": "web", "framework": "nextjs", "nodeVersion": "20.x",
+				"link":      map[string]any{"org": "acme", "repo": "web", "type": "github", "productionBranch": "main"},
 				"updatedAt": int64(1716206800000),
 				"latestDeployments": []any{map[string]any{
 					"uid": "dpl_ready", "url": "web-ready.vercel.app", "readyState": "READY", "target": "production",

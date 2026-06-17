@@ -44,6 +44,9 @@ func TestDeploymentListStateFilter(t *testing.T) {
 	if rows[0]["error_code"] != "BUILD_FAILED" {
 		t.Fatalf("expected error_code on failed deploy: %v", rows[0])
 	}
+	if rows[0]["checks"] != "failed" || rows[0]["oom"] != true {
+		t.Fatalf("expected checks/oom failure signals: %v", rows[0])
+	}
 }
 
 func TestDeploymentGet(t *testing.T) {
@@ -108,8 +111,12 @@ func TestProjectListAndGet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get err: %v", err)
 	}
-	if m := decodeJSON(t, out); m["id"] != "prj_web" {
+	m := decodeJSON(t, out)
+	if m["id"] != "prj_web" {
 		t.Fatalf("project get = %v", m)
+	}
+	if m["repo"] != "acme/web" || m["production_branch"] != "main" || m["node_version"] != "20.x" {
+		t.Fatalf("project get enrichment missing: %v", m)
 	}
 }
 
