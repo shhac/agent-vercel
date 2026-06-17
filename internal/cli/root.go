@@ -3,10 +3,12 @@ package cli
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
 	"github.com/shhac/agent-vercel/internal/output"
+	"github.com/shhac/agent-vercel/internal/settings"
 	"github.com/spf13/cobra"
 )
 
@@ -37,6 +39,34 @@ func Execute(version string) error {
 	return nil
 }
 
+// applyConfigDefaults fills unset presentation/transport flags from config.json
+// (precedence: explicit flag > config > built-in default). Best-effort: a
+// missing or unreadable config never blocks a command. Credential/scope defaults
+// are NOT here — those live in credentials.json via auth/scope set-default.
+func applyConfigDefaults(g *GlobalFlags) {
+	s, err := settings.New()
+	if err != nil {
+		return
+	}
+	m, err := s.Load()
+	if err != nil {
+		return
+	}
+	if g.Format == "" {
+		g.Format = m["format"]
+	}
+	if g.MaxBodyChars == 0 {
+		if n, err := strconv.Atoi(m["max-body-chars"]); err == nil {
+			g.MaxBodyChars = n
+		}
+	}
+	if g.TimeoutMS == 0 {
+		if n, err := strconv.Atoi(m["timeout"]); err == nil {
+			g.TimeoutMS = n
+		}
+	}
+}
+
 // annotateError adds a usage hint to cobra's bare "unknown command" error (an
 // unknown top-level command isn't caught by handleUnknownSubcommand, which only
 // covers unknown subcommands of a known group).
@@ -62,6 +92,7 @@ func newRootCmd(version string) *cobra.Command {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+			applyConfigDefaults(g)
 			// Validate --format up front so a bad value fails before any work.
 			if g.Format != "" {
 				if _, err := output.ParseFormat(g.Format); err != nil {

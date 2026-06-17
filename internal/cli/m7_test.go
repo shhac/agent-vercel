@@ -45,21 +45,55 @@ func TestConfigRoundTrip(t *testing.T) {
 	defer srv.Close()
 	t.Setenv("AGENT_VERCEL_CONFIG", filepath.Join(t.TempDir(), "config.json"))
 
-	if _, _, err := execCLI(t, srv.URL, "config", "set", "cache.ttl", "30m"); err != nil {
+	if _, _, err := execCLI(t, srv.URL, "config", "set", "max-body-chars", "5000"); err != nil {
 		t.Fatalf("set: %v", err)
 	}
-	out, _, err := execCLI(t, srv.URL, "config", "get", "cache.ttl")
+	out, _, err := execCLI(t, srv.URL, "config", "get", "max-body-chars")
 	if err != nil {
 		t.Fatalf("get: %v", err)
 	}
-	if m := decodeJSON(t, out); m["value"] != "30m" {
+	if m := decodeJSON(t, out); m["value"] != "5000" {
 		t.Fatalf("config get = %v", m)
 	}
-	if _, _, err := execCLI(t, srv.URL, "config", "unset", "cache.ttl"); err != nil {
+	if _, _, err := execCLI(t, srv.URL, "config", "unset", "max-body-chars"); err != nil {
 		t.Fatalf("unset: %v", err)
 	}
-	if _, _, err := execCLI(t, srv.URL, "config", "get", "cache.ttl"); err == nil {
+	if _, _, err := execCLI(t, srv.URL, "config", "get", "max-body-chars"); err == nil {
 		t.Fatal("expected missing after unset")
+	}
+}
+
+func TestConfigDefaultsAppliedAndRejected(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+	t.Setenv("AGENT_VERCEL_CONFIG", filepath.Join(t.TempDir(), "config.json"))
+
+	// unknown key and auth/scope keys are rejected with agent errors
+	for _, k := range []string{"frmat", "scope", "auth"} {
+		if _, errOut, err := execCLI(t, srv.URL, "config", "set", k, "x"); err == nil {
+			t.Fatalf("config set %q should fail", k)
+		} else if m := decodeJSON(t, errOut); m["fixable_by"] != "agent" {
+			t.Fatalf("config set %q: %v", k, m)
+		}
+	}
+
+	// a stored format default applies, and an explicit --format overrides it
+	if _, _, err := execCLI(t, srv.URL, "config", "set", "format", "yaml"); err != nil {
+		t.Fatalf("set format: %v", err)
+	}
+	out, _, err := execCLI(t, srv.URL, "scope", "current")
+	if err != nil {
+		t.Fatalf("scope current: %v", err)
+	}
+	if !strings.Contains(out, "default_scope:") || strings.HasPrefix(strings.TrimSpace(out), "{") {
+		t.Fatalf("config format=yaml should make output YAML, got: %s", out)
+	}
+	out, _, err = execCLI(t, srv.URL, "--format", "json", "scope", "current")
+	if err != nil {
+		t.Fatalf("override: %v", err)
+	}
+	if !strings.HasPrefix(strings.TrimSpace(out), "{") {
+		t.Fatalf("--format json should override config yaml, got: %s", out)
 	}
 }
 

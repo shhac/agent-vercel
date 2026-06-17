@@ -111,4 +111,4 @@ distinct from the agent-vercel access token (never readable).
 
 | Command | Notes |
 |---|---|
-| `config get\|set\|list\|unset` | persists ordinary settings in config.json |
+| `config get\|set\|list\|unset` | persisted defaults for `format`, `max-body-chars`, `timeout` (precedence: flag > config > built-in). Auth/scope defaults use `auth`/`scope set-default`, not config |

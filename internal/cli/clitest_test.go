@@ -14,7 +14,15 @@ import (
 // via env so commands authenticate without touching the real Keychain.
 func execCLI(t *testing.T, baseURL string, args ...string) (stdout, stderr string, err error) {
 	t.Helper()
-	t.Setenv("AGENT_VERCEL_CREDENTIALS", filepath.Join(t.TempDir(), "credentials.json"))
+	// Isolate creds/config from the real ~/.config, but only establish a temp
+	// path if the test hasn't already set one — so a test's multiple execCLI
+	// calls share state (the first call's temp dir is reused by later calls).
+	if os.Getenv("AGENT_VERCEL_CREDENTIALS") == "" {
+		t.Setenv("AGENT_VERCEL_CREDENTIALS", filepath.Join(t.TempDir(), "credentials.json"))
+	}
+	if os.Getenv("AGENT_VERCEL_CONFIG") == "" {
+		t.Setenv("AGENT_VERCEL_CONFIG", filepath.Join(t.TempDir(), "config.json"))
+	}
 	t.Setenv("VERCEL_TOKEN", "test-token")
 
 	full := append([]string{"--base-url", baseURL}, args...)

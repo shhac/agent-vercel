@@ -107,7 +107,7 @@ domain is a possible later addition.
 | `alias bypass <alias\|id>` | `--ttl`, `--revoke`, `--regenerate` | `--yes` | `PATCH /aliases/{id}/protection-bypass`; mint/revoke a shareable link to a 401-ing preview |
 | `billing charges` | `--from`, `--to`, `--by service\|project` | | `GET /v1/billing/charges` (FOCUS, JSONL); `--by` aggregates billed cost — "what's driving spend" |
 | `api call <METHOD> <path>` | `--query`, `--body <json\|->` | `--yes` if non-GET | raw REST escape hatch |
-| `config get/set/list/unset` | | | persists settings in `config.json` |
+| `config get/set/list/unset` | | | persisted defaults for `format`/`max-body-chars`/`timeout` (flag > config > built-in), applied in PersistentPreRunE; unknown keys and `auth`/`scope` are rejected (those use set-default) |
 | `usage`, `<domain> usage` | | | self-docs |
 
 ## Mutation gating (`--yes`)
