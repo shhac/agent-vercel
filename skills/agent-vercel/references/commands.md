@@ -41,6 +41,7 @@ There is no command that prints the secret. That is intentional.
 |---|---|
 | `deployment list` | `--project --state --target --custom-env --branch --sha --user --since --until --limit --cursor --all` |
 | `deployment get <id\|url>` | |
+| `deployment checks <id\|url>` | `--blocking --failed`; CI/integration checks on the deploy (name, status, conclusion, blocking) — what is blocking or failing it |
 | `deployment current <project>` | live prod deployment + rolling-release; `--custom-env <slug>` shows newest READY in a custom env |
 | `deployment logs <id\|url>` | `--status --since --until --limit --max-body-chars` (build logs) |
 | `deployment runtime-logs <id\|url>` | `--level --status --path --limit`; a bounded live tail — collects logs for the `--timeout` window (default 6s) then returns |

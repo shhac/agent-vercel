@@ -78,6 +78,7 @@ domain is a possible later addition.
 | `scope set-default <slug>` | | | empty arg → personal account |
 | `deployment list` | `--project`, `--state`, `--target`, `--custom-env`, `--branch`, `--sha`, `--user`, `--since`, `--until`, `--limit`, `--cursor`, `--all` | | NDJSON; org/scope-wide; `GET /v6/deployments`. `--custom-env` filters client-side (the API has no custom-env param) |
 | `deployment get <id\|url>` | | | compact: state, target, creator, commit, urls, timings, `errorCode` |
+| `deployment checks <id\|url>` | `--blocking`, `--failed` | | NDJSON; CI/integration checks on the deploy — name, status, conclusion, blocking; `GET /v1/deployments/{id}/checks`. Filters are client-side. Answers "what's blocking / what failed" |
 | `deployment current <project>` | `--custom-env` | | live prod deployment + rolling-release state; `--custom-env` shows the newest READY deploy in a custom environment |
 | `deployment logs <id\|url>` | `--since`, `--until`, `--status`, `--limit`, `--max-body-chars` | | build events; `GET /v3/deployments/{id}/events` |
 | `deployment runtime-logs <id\|url>` | `--level`, `--status`, `--path`, `--limit`, `--max-body-chars` | | bounded live tail: collects for the `--timeout` window (default 6s) then returns; `GET /v1/projects/{id}/deployments/{id}/runtime-logs` (NDJSON stream) |

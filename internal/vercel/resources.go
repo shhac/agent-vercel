@@ -47,6 +47,14 @@ func (c *Client) GetDeployment(ctx context.Context, idOrURL string) (json.RawMes
 	return c.Get(ctx, "/v13/deployments/"+url.PathEscape(idOrURL), nil)
 }
 
+// DeploymentChecks — GET /v1/deployments/{idOrUrl}/checks. The CI / integration
+// checks attached to a deployment (e.g. a failing check blocking promotion).
+// Not paginated; the items live under the "checks" key.
+func (c *Client) DeploymentChecks(ctx context.Context, idOrURL string) ([]json.RawMessage, error) {
+	items, _, err := c.listRaw(ctx, "/v1/deployments/"+url.PathEscape(idOrURL)+"/checks", "checks", nil)
+	return items, err
+}
+
 // ListProjects — GET /v9/projects.
 func (c *Client) ListProjects(ctx context.Context, q url.Values) ([]json.RawMessage, Page, error) {
 	return c.listRaw(ctx, "/v9/projects", "projects", q)

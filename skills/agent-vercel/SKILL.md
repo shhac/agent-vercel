@@ -21,8 +21,8 @@ JSON in, JSON out, no interactivity. Lists are NDJSON (one object per line, then
 `{"@pagination":…}` when more pages exist); single resources are pretty JSON.
 Errors are JSON on stderr with `fixable_by: agent|human|retry` and a `hint`.
 
-Safety: read freely (`list`, `get`, `current`, `logs`, `runtime-logs`, `diff`,
-`inspect`, `records`, `cert`). Do not promote, rollback, cancel, redeploy,
+Safety: read freely (`list`, `get`, `checks`, `current`, `logs`, `runtime-logs`,
+`diff`, `inspect`, `records`, `cert`). Do not promote, rollback, cancel, redeploy,
 change env vars, add/remove/verify domains, or change aliases unless the user
 explicitly asked — those require `--yes`.
 

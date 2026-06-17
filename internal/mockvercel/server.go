@@ -29,20 +29,21 @@ type Team struct {
 
 // Options configures the fixtures served by the handler.
 type Options struct {
-	User           User
-	Teams          []Team
-	Deployments    []map[string]any
-	Projects       []map[string]any
-	RollingRelease map[string]any
-	BuildEvents    []map[string]any
-	RuntimeLogs    []map[string]any
-	Env            []map[string]any
-	Domains        []map[string]any
-	DomainConfig   map[string]any
-	DomainRecords  []map[string]any
-	Certs          map[string]map[string]any
-	Aliases        []map[string]any
-	Charges        []map[string]any
+	User             User
+	Teams            []Team
+	Deployments      []map[string]any
+	Projects         []map[string]any
+	RollingRelease   map[string]any
+	DeploymentChecks []map[string]any
+	BuildEvents      []map[string]any
+	RuntimeLogs      []map[string]any
+	Env              []map[string]any
+	Domains          []map[string]any
+	DomainConfig     map[string]any
+	DomainRecords    []map[string]any
+	Certs            map[string]map[string]any
+	Aliases          []map[string]any
+	Charges          []map[string]any
 	// RuntimeLogsHang, when set, makes the runtime-logs handler hold the
 	// connection open after emitting its lines — simulating Vercel's
 	// open-ended stream so the client's bounded-window read can be tested.
@@ -114,6 +115,11 @@ func defaults() *Options {
 				},
 				"currentCanaryPercentage": 25,
 			},
+		},
+		DeploymentChecks: []map[string]any{
+			{"id": "check_lint", "name": "Lint", "status": "completed", "conclusion": "succeeded", "blocking": true, "integrationId": "icfg_lint", "startedAt": int64(1716206500000), "completedAt": int64(1716206520000)},
+			{"id": "check_e2e", "name": "E2E", "status": "completed", "conclusion": "failed", "blocking": true, "integrationId": "icfg_e2e", "detailsUrl": "https://ci.example.com/runs/1", "rerequestable": true, "startedAt": int64(1716206500000), "completedAt": int64(1716206590000)},
+			{"id": "check_perf", "name": "Lighthouse", "status": "running", "conclusion": "", "blocking": false, "integrationId": "icfg_perf", "startedAt": int64(1716206500000)},
 		},
 		BuildEvents: []map[string]any{
 			{"type": "stdout", "created": int64(1716206500000), "payload": map[string]any{"text": "Running \"next build\""}},
@@ -207,6 +213,9 @@ func New(opts ...Option) http.Handler {
 			}
 		}
 		writeErr(w, http.StatusNotFound, "not_found", "deployment not found: "+id)
+	}))
+	mux.HandleFunc("GET /v1/deployments/{id}/checks", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{"checks": o.DeploymentChecks})
 	}))
 
 	mux.HandleFunc("GET /v9/projects", requireBearer(func(w http.ResponseWriter, _ *http.Request) {

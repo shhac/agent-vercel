@@ -32,7 +32,7 @@ SETUP (once)
   agent-vercel scope set-default acme      # default scope for later calls
 
 CORE DOMAINS (see design-docs/cli-design.md)
-  deployment   list | get | logs | runtime-logs | current | promote* | rollback* | cancel* | redeploy*
+  deployment   list | get | checks | logs | runtime-logs | current | promote* | rollback* | cancel* | redeploy*
   project      list | get
   env          list | diff | get | pull | set* | rm*
   domain       list | get | inspect | records | cert | verify* | add* | rm*
