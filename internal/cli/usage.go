@@ -35,7 +35,8 @@ CORE DOMAINS (proposed; see design-docs/cli-design.md)
   project      list | get
   env          list | diff | get | set* | rm*
   domain       list | get | inspect | records | verify* | add* | rm*
-  alias        list | set* | rm*
+  alias        list | set* | rm* | bypass*
+  billing      charges [--by service|project]   (what is driving spend)
   scope        list | current | set-default
   auth         add | list | test | set-default | remove | import-cli
   api          call <METHOD> <path>       (raw REST escape hatch)

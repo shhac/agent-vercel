@@ -95,6 +95,12 @@ distinct from the agent-vercel access token (never readable).
 | `alias rm <alias>` * | |
 | `alias bypass <alias\|id>` * | `--ttl`, `--revoke <secret>`, `--regenerate` — mint/revoke a shareable bypass link for a gated preview |
 
+## billing
+
+| Command | Notes |
+|---|---|
+| `billing charges` | `--from`/`--to` (date, RFC3339, or duration like 30d; default last 30d), `--by service\|project` to aggregate billed cost — "what's driving spend". `GET /v1/billing/charges` (FOCUS) |
+
 ## api (escape hatch)
 
 | Command | Notes |

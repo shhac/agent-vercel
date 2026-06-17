@@ -40,11 +40,13 @@ The throughline: the triage-grade data lives in the **REST API**; the `vercel`
 binary is for shipping. agent-vercel is read-default, cross-project, history- and
 access-aware — and never needs the `vercel` binary at runtime.
 
-Caveat documented honestly: **usage / billing / Web-Analytics** have no clean
-REST query (they live behind the dashboard and Log Drains). agent-vercel does not
-pretend to answer "what's driving my usage spike" in v1; a `log-drain` domain is
-a possible later addition. This is called out so the tool never implies coverage
-it lacks.
+Partially addressed by **`billing charges`** (`GET /v1/billing/charges`, FOCUS
+format): per-service / per-project billed cost and consumed quantity over a date
+range, with `--by` aggregation — this answers "what's driving spend". The
+remaining honest gap is **request-level observability** (error rates, traffic,
+Web Analytics): those have no clean REST query (dashboard + Log Drains only), so
+agent-vercel does not claim to answer "what's my error rate" — a `log-drain`
+domain is a possible later addition.
 
 ## Global flags
 
@@ -99,6 +101,7 @@ it lacks.
 | `alias set <deployment> <alias>` | | `--yes` | `POST /v2/deployments/{id}/aliases` |
 | `alias rm <alias>` | | `--yes` | |
 | `alias bypass <alias\|id>` | `--ttl`, `--revoke`, `--regenerate` | `--yes` | `PATCH /aliases/{id}/protection-bypass`; mint/revoke a shareable link to a 401-ing preview |
+| `billing charges` | `--from`, `--to`, `--by service\|project` | | `GET /v1/billing/charges` (FOCUS, JSONL); `--by` aggregates billed cost — "what's driving spend" |
 | `api call <METHOD> <path>` | `--query`, `--body <json\|->` | `--yes` if non-GET | raw REST escape hatch |
 | `config get/set/list/unset` | | | persists settings in `config.json` |
 | `usage`, `<domain> usage` | | | self-docs |
@@ -191,8 +194,10 @@ real even though the caller typed the method). This is `lin api query` /
   resolved to names to be readable), Vercel project names and team slugs are
   first-class API identifiers the endpoints accept directly — like `lin`, there
   is no id-resolution step to cache. (`config` persists ordinary settings.)
-- **No usage/billing/analytics** answers in v1 (no clean REST query; see the
-  caveat above). Possible later `log-drain` domain.
+- **No request-level observability** (error rates, traffic, Web Analytics): no
+  clean REST query (dashboard + Log Drains only). Billing/usage *cost* is
+  covered by `billing charges`; a `log-drain` domain is a possible later
+  addition for request observability.
 - **No self-update** command; distribution is brew / `go install`.
 - **No interactive terminal anything.** Native OS dialog (`auth add --form`)
   is the one sanctioned human interaction, for secret entry only.

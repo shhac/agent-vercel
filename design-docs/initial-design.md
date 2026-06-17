@@ -103,7 +103,8 @@ Full surface, flags, and gating live in `cli-design.md`. Domains:
 - **project**: `list`, `get`
 - **env**: `list`, `diff`, `get`, `set`, `rm`
 - **domain**: `list`, `get`, `inspect`, `records`, `verify`, `add`, `rm`, `cert`
-- **alias**: `list`, `set`, `rm`
+- **alias**: `list`, `set`, `rm`, `bypass`
+- **billing**: `charges` (`--by service|project`)
 - **api**: `call <METHOD> <path>` (raw REST escape hatch)
 - **config**: `get`, `set`, `list`, `unset`
 - **usage** / `<domain> usage`

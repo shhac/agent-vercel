@@ -42,6 +42,7 @@ type Options struct {
 	DomainRecords  []map[string]any
 	Certs          map[string]map[string]any
 	Aliases        []map[string]any
+	Charges        []map[string]any
 }
 
 // Option mutates Options.
@@ -140,6 +141,11 @@ func defaults() *Options {
 		Aliases: []map[string]any{
 			{"uid": "alias_1", "alias": "example.com", "created": "2026-05-01T10:00:00.000Z"},
 			{"uid": "alias_2", "alias": "web-ready.vercel.app", "created": "2026-05-01T10:00:00.000Z", "protectionBypass": map[string]any{"scope": "shareable-link"}},
+		},
+		Charges: []map[string]any{
+			{"ServiceName": "Functions", "ChargeCategory": "Usage", "BilledCost": 12.50, "BillingCurrency": "USD", "ConsumedQuantity": 1000000.0, "ConsumedUnit": "invocations", "ChargePeriodStart": "2026-06-01T00:00:00Z", "ChargePeriodEnd": "2026-06-02T00:00:00Z", "Tags": map[string]any{"ProjectName": "web", "ProjectId": "prj_web"}},
+			{"ServiceName": "Bandwidth", "ChargeCategory": "Usage", "BilledCost": 40.00, "BillingCurrency": "USD", "ConsumedQuantity": 200.0, "ConsumedUnit": "GB", "ChargePeriodStart": "2026-06-01T00:00:00Z", "ChargePeriodEnd": "2026-06-02T00:00:00Z", "Tags": map[string]any{"ProjectName": "web", "ProjectId": "prj_web"}},
+			{"ServiceName": "Functions", "ChargeCategory": "Usage", "BilledCost": 3.00, "BillingCurrency": "USD", "ConsumedQuantity": 50000.0, "ConsumedUnit": "invocations", "ChargePeriodStart": "2026-06-01T00:00:00Z", "ChargePeriodEnd": "2026-06-02T00:00:00Z", "Tags": map[string]any{"ProjectName": "api", "ProjectId": "prj_api"}},
 		},
 	}
 }
@@ -310,6 +316,14 @@ func New(opts ...Option) http.Handler {
 	}))
 	mux.HandleFunc("DELETE /v2/aliases/{id}", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"status": "SUCCESS"})
+	}))
+	mux.HandleFunc("GET /v1/billing/charges", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		// FOCUS charges are JSONL; emit one object per line.
+		w.Header().Set("Content-Type", "application/x-ndjson")
+		for _, c := range o.Charges {
+			b, _ := json.Marshal(c)
+			_, _ = w.Write(append(b, '\n'))
+		}
 	}))
 	mux.HandleFunc("PATCH /aliases/{id}/protection-bypass", requireBearer(func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any

@@ -97,6 +97,7 @@ func newRootCmd(version string) *cobra.Command {
 	registerEnv(root, g)
 	registerDomain(root, g)
 	registerAlias(root, g)
+	registerBilling(root, g)
 	registerAPI(root, g)
 	registerConfig(root, g)
 
