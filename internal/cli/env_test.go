@@ -2,6 +2,9 @@ package cli
 
 import (
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/shhac/agent-vercel/internal/mockvercel"
@@ -174,5 +177,34 @@ func TestEnvDiffEmptyValuesClassifiedSame(t *testing.T) {
 	}
 	if status["ONLY_P"] != "only_production" {
 		t.Fatalf("ONLY_P = %q; want only_production", status["ONLY_P"])
+	}
+}
+
+func TestEnvPullWritesDotenv(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+	out := filepath.Join(t.TempDir(), ".env")
+
+	res, _, err := execCLI(t, srv.URL, "env", "pull", "web", "--environment", "production", "--out", out)
+	if err != nil {
+		t.Fatalf("pull: %v", err)
+	}
+	if m := decodeJSON(t, res); m["environment"] != "production" || m["count"] != float64(3) {
+		t.Fatalf("pull result = %v", m)
+	}
+	data, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatalf("read .env: %v", err)
+	}
+	got := string(data)
+	// production targets: KEY_SHARED, API_URL(prod), ONLY_PROD — sorted, quoted, decrypted
+	if !strings.Contains(got, `API_URL="https://prod.example.com"`) {
+		t.Fatalf(".env missing decrypted API_URL:\n%s", got)
+	}
+	if !strings.Contains(got, `KEY_SHARED="shared-val"`) {
+		t.Fatalf(".env missing KEY_SHARED:\n%s", got)
+	}
+	if strings.Contains(got, "ONLY_PREVIEW") {
+		t.Fatalf("preview-only var leaked into production pull:\n%s", got)
 	}
 }

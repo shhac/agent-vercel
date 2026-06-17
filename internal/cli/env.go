@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"net/url"
+	"os"
 	"sort"
 	"strings"
 
@@ -16,8 +17,54 @@ func registerEnv(root *cobra.Command, g *GlobalFlags) {
 		Short: "Inspect a project's environment variables (and diff across environments)",
 		RunE:  func(c *cobra.Command, args []string) error { return handleUnknownSubcommand(c, args) },
 	}
-	cmd.AddCommand(envListCmd(g), envGetCmd(g), envDiffCmd(g), envSetCmd(g), envRmCmd(g))
+	cmd.AddCommand(envListCmd(g), envGetCmd(g), envDiffCmd(g), envSetCmd(g), envRmCmd(g), envPullCmd(g))
 	root.AddCommand(cmd)
+}
+
+func envPullCmd(g *GlobalFlags) *cobra.Command {
+	var environment, out, gitBranch string
+	cmd := &cobra.Command{
+		Use:   "pull <project>",
+		Short: "Write a project's (decrypted) env vars for one environment to a dotenv file",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			envs, err := fetchEnv(g, cmd, args[0], gitBranch, "", true)
+			if err != nil {
+				return err
+			}
+			keys := make([]string, 0, len(envs))
+			vals := map[string]string{}
+			for _, e := range envs {
+				if !targets(e)[environment] {
+					continue
+				}
+				if _, seen := vals[e.Key]; !seen {
+					keys = append(keys, e.Key)
+				}
+				vals[e.Key] = e.Value
+			}
+			sort.Strings(keys)
+			var b strings.Builder
+			for _, k := range keys {
+				b.WriteString(k + "=" + dotenvQuote(vals[k]) + "\n")
+			}
+			if err := os.WriteFile(out, []byte(b.String()), 0o600); err != nil {
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
+			}
+			return printSingle(g, map[string]any{"written": out, "count": len(keys), "environment": environment})
+		},
+	}
+	cmd.Flags().StringVar(&environment, "environment", "development", "which environment to pull (production|preview|development)")
+	cmd.Flags().StringVar(&out, "out", ".env", "output dotenv file path")
+	cmd.Flags().StringVar(&gitBranch, "git-branch", "", "preview branch to pull")
+	return cmd
+}
+
+// dotenvQuote double-quotes a value and escapes backslashes, quotes, and
+// newlines so the dotenv line round-trips.
+func dotenvQuote(v string) string {
+	r := strings.NewReplacer(`\`, `\\`, `"`, `\"`, "\n", `\n`, "\r", `\r`)
+	return `"` + r.Replace(v) + `"`
 }
 
 func envSetCmd(g *GlobalFlags) *cobra.Command {

@@ -66,6 +66,7 @@ There is no command that prints the secret. That is intentional.
 | `env get <project> <key>` | `--environment --decrypt` |
 | `env set <project> <key> <value>` * | `--environment --git-branch` |
 | `env rm <project> <key>` * | `--environment` |
+| `env pull <project>` | `--environment` (default development), `--out` (default .env), `--git-branch` — write decrypted vars to a dotenv file |
 
 Env vars are the *application's* config (legitimately readable with `--decrypt`),
 distinct from the agent-vercel access token (never readable).

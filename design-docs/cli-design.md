@@ -86,6 +86,7 @@ it lacks.
 | `env get <project> <key>` | `--environment`, `--decrypt` | | |
 | `env set <project> <key> <value>` | `--environment`, `--git-branch` | `--yes` | |
 | `env rm <project> <key>` | `--environment` | `--yes` | |
+| `env pull <project>` | `--environment` (default development), `--out` (default .env), `--git-branch` | | writes decrypted vars to a 0600 dotenv file |
 | `domain list` | `--limit` | | account domains; `GET /v5/domains` |
 | `domain get <domain>` | | | verification challenges, redirect, verified state |
 | `domain inspect <domain>` | | | config check: intended vs actual nameservers, misconfig reasons |
