@@ -25,6 +25,10 @@ func registerDeployment(root *cobra.Command, g *GlobalFlags) {
 		deploymentCurrentCmd(g),
 		deploymentLogsCmd(g),
 		deploymentRuntimeLogsCmd(g),
+		deploymentPromoteCmd(g),
+		deploymentRollbackCmd(g),
+		deploymentCancelCmd(g),
+		deploymentRedeployCmd(g),
 	)
 	root.AddCommand(cmd)
 }

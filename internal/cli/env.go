@@ -16,8 +16,114 @@ func registerEnv(root *cobra.Command, g *GlobalFlags) {
 		Short: "Inspect a project's environment variables (and diff across environments)",
 		RunE:  func(c *cobra.Command, args []string) error { return handleUnknownSubcommand(c, args) },
 	}
-	cmd.AddCommand(envListCmd(g), envGetCmd(g), envDiffCmd(g))
+	cmd.AddCommand(envListCmd(g), envGetCmd(g), envDiffCmd(g), envSetCmd(g), envRmCmd(g))
 	root.AddCommand(cmd)
+}
+
+func envSetCmd(g *GlobalFlags) *cobra.Command {
+	var environments, gitBranch, varType string
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "set <project> <key> <value>",
+		Short: "Create or update an environment variable",
+		Args:  cobra.ExactArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return run(func() error {
+				project, key, value := args[0], args[1], args[2]
+				targetList := splitCSV(environments)
+				if err := requireYes(yes,
+					"set env "+key+" on "+project+" ("+environments+")",
+					"agent-vercel env set "+project+" "+key+" <value> --environment "+environments+" --yes"); err != nil {
+					return err
+				}
+				r, err := resolveClient(g)
+				if err != nil {
+					return err
+				}
+				body := map[string]any{"key": key, "value": value, "type": varType, "target": targetList}
+				if gitBranch != "" {
+					body["gitBranch"] = gitBranch
+				}
+				raw, err := r.client.CreateEnv(cmd.Context(), project, body)
+				if err != nil {
+					return err
+				}
+				if g.Full {
+					return printRaw(g, raw)
+				}
+				return printSingle(g, map[string]any{"set": key, "target": targetList})
+			})
+		},
+	}
+	f := cmd.Flags()
+	f.StringVar(&environments, "environment", "production", "comma-separated environments (production,preview,development)")
+	f.StringVar(&gitBranch, "git-branch", "", "limit a preview var to a git branch")
+	f.StringVar(&varType, "type", "encrypted", "variable type: encrypted|plain|sensitive")
+	f.BoolVar(&yes, "yes", false, "confirm this state-changing action")
+	return cmd
+}
+
+func envRmCmd(g *GlobalFlags) *cobra.Command {
+	var environment string
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "rm <project> <key>",
+		Short: "Remove an environment variable",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return run(func() error {
+				project, key := args[0], args[1]
+				if err := requireYes(yes, "remove env "+key+" from "+project,
+					"agent-vercel env rm "+project+" "+key+" --yes"); err != nil {
+					return err
+				}
+				envs, err := fetchEnv(g, cmd, project, "", "", false)
+				if err != nil {
+					return err
+				}
+				var ids []string
+				for _, e := range envs {
+					if e.Key != key {
+						continue
+					}
+					if environment != "" && !targets(e)[environment] {
+						continue
+					}
+					ids = append(ids, e.ID)
+				}
+				switch len(ids) {
+				case 0:
+					return agenterrors.Newf(agenterrors.FixableByAgent, "no env var %q in project %q", key, project).
+						WithHint("run 'agent-vercel env list " + project + "' to see keys")
+				case 1:
+				default:
+					return agenterrors.Newf(agenterrors.FixableByAgent, "%q matches %d env entries; narrow with --environment", key, len(ids))
+				}
+				r, err := resolveClient(g)
+				if err != nil {
+					return err
+				}
+				if _, err := r.client.DeleteEnv(cmd.Context(), project, ids[0]); err != nil {
+					return err
+				}
+				return printSingle(g, map[string]any{"removed": key, "id": ids[0]})
+			})
+		},
+	}
+	cmd.Flags().StringVar(&environment, "environment", "", "limit to a single environment")
+	cmd.Flags().BoolVar(&yes, "yes", false, "confirm this state-changing action")
+	return cmd
+}
+
+func splitCSV(s string) []string {
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 type rawEnv struct {

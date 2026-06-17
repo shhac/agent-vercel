@@ -12,6 +12,17 @@ import (
 // wrapAgent wraps a (usually decode) error as fixable_by: agent.
 func wrapAgent(err error) error { return agenterrors.Wrap(err, agenterrors.FixableByAgent) }
 
+// requireYes returns a fixable_by:human error describing a gated mutation when
+// --yes was not passed. action describes what would happen; rerun is the exact
+// command to rerun with --yes.
+func requireYes(yes bool, action, rerun string) error {
+	if yes {
+		return nil
+	}
+	return agenterrors.Newf(agenterrors.FixableByHuman, "refusing to %s without confirmation", action).
+		WithHint("rerun with --yes: " + rerun)
+}
+
 // setIf sets a query param only when val is non-empty.
 func setIf(q url.Values, key, val string) {
 	if val != "" {

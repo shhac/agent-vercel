@@ -268,6 +268,42 @@ func New(opts ...Option) http.Handler {
 		})
 	}))
 
+	// --- writes (M6) ---
+	mux.HandleFunc("PATCH /v12/deployments/{id}/cancel", requireBearer(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{"id": r.PathValue("id"), "state": "CANCELED"})
+	}))
+	mux.HandleFunc("POST /v10/projects/{projectId}/promote/{deploymentId}", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusAccepted)
+	}))
+	mux.HandleFunc("POST /v1/projects/{projectId}/rollback/{deploymentId}", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+	}))
+	mux.HandleFunc("POST /v13/deployments", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{"id": "dpl_new", "url": "web-new.vercel.app", "readyState": "QUEUED"})
+	}))
+	mux.HandleFunc("POST /v10/projects/{idOrName}/env", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{"created": map[string]any{"id": "env_new", "key": "NEW"}})
+	}))
+	mux.HandleFunc("DELETE /v9/projects/{idOrName}/env/{id}", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{})
+	}))
+	mux.HandleFunc("POST /v10/projects/{idOrName}/domains", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{"name": "new.example.com", "verified": false,
+			"verification": []any{map[string]any{"type": "TXT", "domain": "_vercel.new.example.com", "value": "vc-domain-verify=...", "reason": "pending"}}})
+	}))
+	mux.HandleFunc("DELETE /v9/projects/{idOrName}/domains/{domain}", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{})
+	}))
+	mux.HandleFunc("POST /v9/projects/{idOrName}/domains/{domain}/verify", requireBearer(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{"name": r.PathValue("domain"), "verified": true})
+	}))
+	mux.HandleFunc("POST /v2/deployments/{id}/aliases", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{"uid": "alias_new", "alias": "app.example.com"})
+	}))
+	mux.HandleFunc("DELETE /v2/aliases/{id}", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{"status": "SUCCESS"})
+	}))
+
 	return mux
 }
 

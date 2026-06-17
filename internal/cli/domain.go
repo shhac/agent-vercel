@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/url"
 
+	agenterrors "github.com/shhac/agent-vercel/internal/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -154,8 +155,106 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 		},
 	}
 
-	cmd.AddCommand(list, get, inspect, records, cert)
+	cmd.AddCommand(list, get, inspect, records, cert, domainAddCmd(g), domainRmCmd(g), domainVerifyCmd(g))
 	root.AddCommand(cmd)
+}
+
+func domainAddCmd(g *GlobalFlags) *cobra.Command {
+	var redirect, gitBranch string
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "add <project> <domain>",
+		Short: "Add a domain to a project",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return run(func() error {
+				project, domain := args[0], args[1]
+				if err := requireYes(yes, "add domain "+domain+" to "+project,
+					"agent-vercel domain add "+project+" "+domain+" --yes"); err != nil {
+					return err
+				}
+				r, err := resolveClient(g)
+				if err != nil {
+					return err
+				}
+				body := map[string]any{"name": domain}
+				putIf(body, "redirect", redirect)
+				putIf(body, "gitBranch", gitBranch)
+				raw, err := r.client.AddProjectDomain(cmd.Context(), project, body)
+				if err != nil {
+					return err
+				}
+				return printRaw(g, raw)
+			})
+		},
+	}
+	cmd.Flags().StringVar(&redirect, "redirect", "", "redirect target domain")
+	cmd.Flags().StringVar(&gitBranch, "git-branch", "", "git branch to link the domain to")
+	cmd.Flags().BoolVar(&yes, "yes", false, "confirm this state-changing action")
+	return cmd
+}
+
+func domainRmCmd(g *GlobalFlags) *cobra.Command {
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "rm <project> <domain>",
+		Short: "Remove a domain from a project",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return run(func() error {
+				project, domain := args[0], args[1]
+				if err := requireYes(yes, "remove domain "+domain+" from "+project,
+					"agent-vercel domain rm "+project+" "+domain+" --yes"); err != nil {
+					return err
+				}
+				r, err := resolveClient(g)
+				if err != nil {
+					return err
+				}
+				if _, err := r.client.RemoveProjectDomain(cmd.Context(), project, domain); err != nil {
+					return err
+				}
+				return printSingle(g, map[string]any{"removed": domain, "project": project})
+			})
+		},
+	}
+	cmd.Flags().BoolVar(&yes, "yes", false, "confirm this state-changing action")
+	return cmd
+}
+
+func domainVerifyCmd(g *GlobalFlags) *cobra.Command {
+	var project string
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "verify <domain> --project <p>",
+		Short: "Trigger verification of a project domain",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return run(func() error {
+				domain := args[0]
+				if project == "" {
+					return agenterrors.New("--project is required", agenterrors.FixableByAgent).
+						WithHint("pass --project <id|name>")
+				}
+				if err := requireYes(yes, "verify domain "+domain+" on "+project,
+					"agent-vercel domain verify "+domain+" --project "+project+" --yes"); err != nil {
+					return err
+				}
+				r, err := resolveClient(g)
+				if err != nil {
+					return err
+				}
+				raw, err := r.client.VerifyProjectDomain(cmd.Context(), project, domain)
+				if err != nil {
+					return err
+				}
+				return printRaw(g, raw)
+			})
+		},
+	}
+	cmd.Flags().StringVar(&project, "project", "", "project id or name (required)")
+	cmd.Flags().BoolVar(&yes, "yes", false, "confirm this state-changing action")
+	return cmd
 }
 
 type rawDomain struct {

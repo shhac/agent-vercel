@@ -37,8 +37,64 @@ func registerAlias(root *cobra.Command, g *GlobalFlags) {
 		},
 	}
 
-	cmd.AddCommand(list)
+	cmd.AddCommand(list, aliasSetCmd(g), aliasRmCmd(g))
 	root.AddCommand(cmd)
+}
+
+func aliasSetCmd(g *GlobalFlags) *cobra.Command {
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "set <deployment> <alias>",
+		Short: "Assign an alias to a deployment (repoints it from any prior deployment)",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return run(func() error {
+				deployment, alias := args[0], args[1]
+				if err := requireYes(yes, "point "+alias+" at "+deployment,
+					"agent-vercel alias set "+deployment+" "+alias+" --yes"); err != nil {
+					return err
+				}
+				r, err := resolveClient(g)
+				if err != nil {
+					return err
+				}
+				raw, err := r.client.AssignAlias(cmd.Context(), deployment, alias)
+				if err != nil {
+					return err
+				}
+				return printRaw(g, raw)
+			})
+		},
+	}
+	cmd.Flags().BoolVar(&yes, "yes", false, "confirm this state-changing action")
+	return cmd
+}
+
+func aliasRmCmd(g *GlobalFlags) *cobra.Command {
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "rm <alias|id>",
+		Short: "Delete an alias",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return run(func() error {
+				if err := requireYes(yes, "delete alias "+args[0],
+					"agent-vercel alias rm "+args[0]+" --yes"); err != nil {
+					return err
+				}
+				r, err := resolveClient(g)
+				if err != nil {
+					return err
+				}
+				if _, err := r.client.DeleteAlias(cmd.Context(), args[0]); err != nil {
+					return err
+				}
+				return printSingle(g, map[string]any{"removed": args[0]})
+			})
+		},
+	}
+	cmd.Flags().BoolVar(&yes, "yes", false, "confirm this state-changing action")
+	return cmd
 }
 
 func compactAlias(raw json.RawMessage) (map[string]any, error) {
