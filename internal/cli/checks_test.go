@@ -2,6 +2,7 @@ package cli
 
 import (
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/shhac/agent-vercel/internal/mockvercel"
@@ -69,6 +70,38 @@ func TestDeploymentChecksBlockingOnly(t *testing.T) {
 		if r["blocking"] != true {
 			t.Fatalf("--blocking should keep only blocking checks: %v", r)
 		}
+	}
+}
+
+func TestDeploymentChecksBlockingAndFailed(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	// Both flags together intersect: only a check that is blocking AND not
+	// passing survives — the top triage question "what's both blocking me and
+	// actually broken". The E2E check is the only one matching both.
+	out, _, err := execCLI(t, srv.URL, "deployment", "checks", "dpl_err", "--blocking", "--failed")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	rows := ndjsonLines(t, out)
+	if len(rows) != 1 || rows[0]["name"] != "E2E" {
+		t.Fatalf("blocking+failed should yield only E2E: %s", out)
+	}
+}
+
+func TestDeploymentChecksEmpty(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New(mockvercel.WithDeploymentChecks([]map[string]any{})))
+	defer srv.Close()
+
+	// A deployment with no checks attached must succeed with empty output, not
+	// error — common for simple deploys with no CI integration.
+	out, _, err := execCLI(t, srv.URL, "deployment", "checks", "dpl_ready")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if strings.TrimSpace(out) != "" {
+		t.Fatalf("expected empty output, got: %q", out)
 	}
 }
 
