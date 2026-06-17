@@ -39,6 +39,29 @@ make test-integration   # uses $AGENT_VERCEL_IT_TOKEN, or a stored credential
                         # via $AGENT_VERCEL_IT_AUTH (+ optional $AGENT_VERCEL_IT_SCOPE)
 ```
 
+## Keeping docs in sync
+
+When you add, remove, or change a command, a flag, or its `--yes` gating, update
+the docs that don't regenerate themselves:
+
+- **Auto-generated — nothing to do.** Per-domain `usage`
+  (`agent-vercel <domain> usage`), the `usage --json` catalog, and `--help` all
+  derive from the cobra tree (`Use` + `Short`), so fixing a command's `Short` or
+  flag help updates them for free — see `printDomainUsage` / `printCommandCatalog`
+  in `internal/cli/usage.go`.
+- **Hand-maintained — the one drift point.** The `usageOverview` const in
+  `internal/cli/usage.go`: the CORE DOMAINS list and its `*` `--yes` markers.
+  Update it whenever subcommands or gating change; nothing enforces it.
+- **Skill** — `skills/agent-vercel/SKILL.md` (lean, common-path triage) plus
+  `skills/agent-vercel/references/{commands,output}.md` (full surface). Use
+  incremental disclosure: keep `SKILL.md` short and push detail into the
+  references. Mirror user-facing changes into the `README` command-surface table.
+- **design-docs/** — capture the *why* of a decision so it survives the diff:
+  command-surface and gating choices in `cli-design.md`; Vercel API behavior the
+  implementation relies on (quirks, undocumented shapes) in
+  `behavior-reference.md`. Don't let a new gating call or output-shape change land
+  with the rationale only in a commit message.
+
 ## References
 
 The full design and command surface live in `design-docs/`:
