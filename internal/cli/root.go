@@ -130,6 +130,7 @@ func newRootCmd(version string) *cobra.Command {
 	registerAlias(root, g)
 	registerBilling(root, g)
 	registerWebhook(root, g)
+	registerEdgeConfig(root, g)
 	registerAPI(root, g)
 	registerConfig(root, g)
 

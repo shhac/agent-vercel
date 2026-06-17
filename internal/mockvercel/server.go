@@ -47,6 +47,8 @@ type Options struct {
 	Aliases            []map[string]any
 	Charges            []map[string]any
 	Webhooks           []map[string]any
+	EdgeConfigs        []map[string]any
+	EdgeConfigItems    map[string][]map[string]any
 	// RuntimeLogsHang, when set, makes the runtime-logs handler hold the
 	// connection open after emitting its lines — simulating Vercel's
 	// open-ended stream so the client's bounded-window read can be tested.
@@ -77,6 +79,9 @@ func WithCustomEnvironments(e []map[string]any) Option {
 
 // WithWebhooks overrides the fixture webhooks.
 func WithWebhooks(w []map[string]any) Option { return func(o *Options) { o.Webhooks = w } }
+
+// WithEdgeConfigs overrides the fixture Edge Configs.
+func WithEdgeConfigs(e []map[string]any) Option { return func(o *Options) { o.EdgeConfigs = e } }
 
 // WithRuntimeLogsHang makes the runtime-logs endpoint hold the connection open
 // after emitting its lines, simulating Vercel's open-ended log stream.
@@ -214,6 +219,16 @@ func defaults() *Options {
 		Webhooks: []map[string]any{
 			{"id": "hook_deploys", "url": "https://hooks.example.com/vercel", "events": []any{"deployment.created", "deployment.succeeded", "deployment.error"}, "projectIds": []any{"prj_web"}, "createdAt": int64(1716000000000), "updatedAt": int64(1716206800000)},
 			{"id": "hook_all", "url": "https://hooks.example.com/audit", "events": []any{"deployment.error"}, "createdAt": int64(1716010000000), "updatedAt": int64(1716010000000)},
+		},
+		EdgeConfigs: []map[string]any{
+			{"id": "ecfg_flags", "slug": "flags", "itemCount": 2, "sizeInBytes": 128, "createdAt": int64(1716000000000), "updatedAt": int64(1716206800000)},
+			{"id": "ecfg_redirects", "slug": "redirects", "itemCount": 0, "createdAt": int64(1716010000000), "updatedAt": int64(1716010000000)},
+		},
+		EdgeConfigItems: map[string][]map[string]any{
+			"ecfg_flags": {
+				{"key": "maintenance_mode", "value": false},
+				{"key": "new_checkout", "value": map[string]any{"enabled": true, "rollout": 25}},
+			},
 		},
 	}
 }
@@ -433,6 +448,12 @@ func New(opts ...Option) http.Handler {
 			return
 		}
 		writeJSON(w, http.StatusOK, o.Webhooks)
+	}))
+	mux.HandleFunc("GET /v1/edge-config", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, o.EdgeConfigs)
+	}))
+	mux.HandleFunc("GET /v1/edge-config/{id}/items", requireBearer(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, o.EdgeConfigItems[r.PathValue("id")])
 	}))
 	mux.HandleFunc("GET /v1/billing/charges", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
 		// FOCUS charges are JSONL; emit one object per line.

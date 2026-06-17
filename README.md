@@ -69,6 +69,7 @@ agent-vercel usage                       # LLM-oriented overview
 | `alias` | `list`, `set`*, `rm`*, `bypass`* |
 | `billing` | `charges` (`--by service\|project`) |
 | `webhook` | `list` (`--project`) |
+| `edge-config` | `list`, `items <id>` |
 | `api` | `call <METHOD> <path>` (raw escape hatch) |
 | `config` | `get`, `set`, `list`, `unset` |
 

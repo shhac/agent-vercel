@@ -110,6 +110,8 @@ domain is a possible later addition.
 | `alias bypass <alias\|id>` | `--ttl`, `--revoke`, `--regenerate` | `--yes` | `PATCH /aliases/{id}/protection-bypass`; mint/revoke a shareable link to a 401-ing preview |
 | `billing charges` | `--from`, `--to`, `--by service\|project` | | `GET /v1/billing/charges` (FOCUS, JSONL); `--by` aggregates billed cost — "what's driving spend" |
 | `webhook list` | `--project` | | NDJSON; the scope's webhooks — endpoint url, subscribed events, target projects; `GET /v1/webhooks`. Answers "is the deploy notification / CI integration wired up, and for what events" |
+| `edge-config list` (`edge`) | | | NDJSON; the scope's Edge Configs — id, slug, item count, size; `GET /v1/edge-config` |
+| `edge-config items <id>` | | | NDJSON; the key/value items in one Edge Config (non-secret config: feature flags, redirects); `GET /v1/edge-config/{id}/items` |
 | `api call <METHOD> <path>` | `--query`, `--body <json\|->` | `--yes` if non-GET | raw REST escape hatch |
 | `config get/set/list/unset` | | | persisted defaults for `format`/`max-body-chars`/`timeout` (flag > config > built-in), applied in PersistentPreRunE; unknown keys and `auth`/`scope` are rejected (those use set-default) |
 | `usage`, `<domain> usage` | | | self-docs |

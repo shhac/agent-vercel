@@ -71,6 +71,7 @@ agent-vercel domain inspect example.com                 # missing DNS record / c
 agent-vercel alias list dpl_…                           # aliases + protection state
 agent-vercel billing charges --by service               # what is driving spend (last 30d)
 agent-vercel webhook list --project prj_…               # which events fire where
+agent-vercel edge-config items ecfg_…                   # live feature flags / config values
 ```
 
 `deployment list` is **cross-project** and filterable — the main thing the

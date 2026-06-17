@@ -47,6 +47,27 @@ func (c *Client) GetDeployment(ctx context.Context, idOrURL string) (json.RawMes
 	return c.Get(ctx, "/v13/deployments/"+url.PathEscape(idOrURL), nil)
 }
 
+// ListEdgeConfigs — GET /v1/edge-config. The Edge Configs in the scope (each a
+// non-secret key/value store for feature flags, redirects, etc.). The payload
+// may be a bare array or wrapped under "edgeConfigs".
+func (c *Client) ListEdgeConfigs(ctx context.Context, q url.Values) ([]json.RawMessage, error) {
+	raw, err := c.Get(ctx, "/v1/edge-config", q)
+	if err != nil {
+		return nil, err
+	}
+	return decodeKeyedArray(raw, "edgeConfigs"), nil
+}
+
+// EdgeConfigItems — GET /v1/edge-config/{id}/items. The key/value items in one
+// Edge Config. Returns a JSON array.
+func (c *Client) EdgeConfigItems(ctx context.Context, id string) ([]json.RawMessage, error) {
+	raw, err := c.Get(ctx, "/v1/edge-config/"+url.PathEscape(id)+"/items", nil)
+	if err != nil {
+		return nil, err
+	}
+	return decodeArrayOrStream(raw), nil
+}
+
 // ListWebhooks — GET /v1/webhooks. The team/account webhooks (which events
 // they subscribe to and which projects they target). Optional projectId filter
 // via q. The payload may be a bare array or wrapped under "webhooks".

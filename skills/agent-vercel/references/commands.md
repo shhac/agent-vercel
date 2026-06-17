@@ -112,6 +112,13 @@ distinct from the agent-vercel access token (never readable).
 |---|---|
 | `webhook list` | `--project <id>` to filter; the scope's webhooks — url, subscribed events, target projects. "Is the deploy notification / CI integration wired up" |
 
+## edge-config (`edge`)
+
+| Command | Notes |
+|---|---|
+| `edge-config list` | the scope's Edge Configs — id, slug, item count, size |
+| `edge-config items <id>` | the key/value items in one Edge Config (non-secret config: feature flags, redirects, maintenance toggles) |
+
 ## api (escape hatch)
 
 | Command | Notes |
