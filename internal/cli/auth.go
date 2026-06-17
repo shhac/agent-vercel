@@ -26,18 +26,19 @@ func registerAuth(root *cobra.Command, g *GlobalFlags) {
 		RunE:  func(c *cobra.Command, args []string) error { return handleUnknownSubcommand(c, args) },
 	}
 
-	var label string
 	var form bool
 
 	add := &cobra.Command{
-		Use:   "add",
+		Use:   "add [label]",
 		Short: "Store a credential in the Keychain (from $VERCEL_TOKEN or --form dialog)",
-		Long: "Stores a Vercel access token in the Keychain under --label.\n" +
-			"With --form, a native OS dialog prompts the human for the token so it\n" +
-			"never appears in the agent's conversation. Otherwise the token is read\n" +
-			"from $VERCEL_TOKEN. The secret is never echoed or written to the file.",
-		Args: cobra.NoArgs,
-		RunE: func(_ *cobra.Command, _ []string) error {
+		Long: "Stores a Vercel access token in the Keychain under the given label\n" +
+			"(default \"default\"). With --form, a native OS dialog prompts the human for\n" +
+			"the token so it never appears in the agent's conversation. Otherwise the\n" +
+			"token is read from $VERCEL_TOKEN. The secret is never echoed or written to\n" +
+			"the file.",
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			label := labelArg(args)
 			tok, err := readNewToken(form)
 			if err != nil {
 				return err
@@ -57,7 +58,6 @@ func registerAuth(root *cobra.Command, g *GlobalFlags) {
 			})
 		},
 	}
-	add.Flags().StringVar(&label, "label", "default", "label to store the credential under")
 	add.Flags().BoolVar(&form, "form", false, "prompt for the token via a native OS dialog (keeps it out of the conversation)")
 
 	list := &cobra.Command{
@@ -162,6 +162,17 @@ func registerAuth(root *cobra.Command, g *GlobalFlags) {
 
 	cmd.AddCommand(add, list, test, setDefault, remove, authImportCLICmd(g))
 	root.AddCommand(cmd)
+}
+
+// labelArg returns the optional credential-label positional, defaulting to
+// "default" when omitted.
+func labelArg(args []string) string {
+	if len(args) == 1 {
+		if l := strings.TrimSpace(args[0]); l != "" {
+			return l
+		}
+	}
+	return "default"
 }
 
 // readNewToken obtains a token to store: via the OS dialog when form is set,

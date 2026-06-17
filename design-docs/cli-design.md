@@ -63,12 +63,12 @@ domain is a possible later addition.
 
 | Command | Key flags | Gate | Notes |
 |---|---|---|---|
-| `auth add` | `--label` (default), `--form` | | `--form` prompts via OS dialog, else reads `VERCEL_TOKEN`; stores in Keychain; never echoes |
+| `auth add [label]` | `--form` | | label positional (default "default"); `--form` prompts via OS dialog, else reads `VERCEL_TOKEN`; stores in Keychain; never echoes |
 | `auth list` (`ls`) | | | label, type, default, username, `secret_status` (keychain/file/missing) — never the secret |
 | `auth test` (`whoami`) | | | `GET /v2/user`; resolves + caches username |
 | `auth set-default <label>` | | | |
 | `auth remove <label>` | | | deletes Keychain entry too |
-| `auth import-cli` | | | optional: read a token from `vercel login` (`~/.local/share/com.vercel.cli/auth.json`) |
+| `auth import-cli [label]` | | | optional: read a token from `vercel login` (`~/.local/share/com.vercel.cli/auth.json`) |
 | `scope list` (`ls`) | | | `GET /v2/teams` (live; names/slugs are used directly, no resolution cache) |
 | `scope current` | | | active scope + default credential |
 | `scope set-default <slug>` | | | empty arg → personal account |

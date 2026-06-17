@@ -18,12 +18,12 @@
 
 | Command | Notes |
 |---|---|
-| `auth add --label <l>` | stores a token in the Keychain; `--form` prompts via OS dialog, else reads `$VERCEL_TOKEN`; never echoes it |
+| `auth add [label]` | stores a token in the Keychain under `label` (default "default"); `--form` prompts via OS dialog, else reads `$VERCEL_TOKEN`; never echoes it |
 | `auth list` (`ls`) | label, type, default, username, `secret_status` (keychain/file/missing) — never the secret |
 | `auth test` (`whoami`) | verifies via `GET /v2/user` |
 | `auth set-default <label>` | |
 | `auth remove <label>` | also deletes the Keychain entry |
-| `auth import-cli` | optional: import a token from `vercel login` |
+| `auth import-cli [label]` | optional: import a token from `vercel login` |
 
 There is no command that prints the secret. That is intentional.
 

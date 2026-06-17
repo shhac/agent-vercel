@@ -11,12 +11,12 @@ import (
 )
 
 func authImportCLICmd(g *GlobalFlags) *cobra.Command {
-	var label string
-	cmd := &cobra.Command{
-		Use:   "import-cli",
+	return &cobra.Command{
+		Use:   "import-cli [label]",
 		Short: "Import an access token from the Vercel CLI (after 'vercel login')",
-		Args:  cobra.NoArgs,
-		RunE: func(_ *cobra.Command, _ []string) error {
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			label := labelArg(args)
 			path, token, err := readVercelCLIToken()
 			if err != nil {
 				return err
@@ -31,8 +31,6 @@ func authImportCLICmd(g *GlobalFlags) *cobra.Command {
 			return printSingle(g, map[string]any{"label": label, "imported_from": path, "stored": true})
 		},
 	}
-	cmd.Flags().StringVar(&label, "label", "default", "label to store the imported credential under")
-	return cmd
 }
 
 // readVercelCLIToken finds the Vercel CLI's auth.json and extracts its token.

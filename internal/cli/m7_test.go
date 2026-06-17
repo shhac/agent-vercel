@@ -75,7 +75,7 @@ func TestAuthAddForm(t *testing.T) {
 	promptSecret = func(_, _ string) (string, error) { return "dialog-token", nil }
 	t.Cleanup(func() { promptSecret = oldPrompt })
 
-	out, _, err := execCLI(t, srv.URL, "auth", "add", "--form", "--label", "viaform")
+	out, _, err := execCLI(t, srv.URL, "auth", "add", "viaform", "--form")
 	if err != nil {
 		t.Fatalf("add --form: %v", err)
 	}
@@ -128,7 +128,7 @@ func TestAuthImportCLI(t *testing.T) {
 	t.Setenv("AGENT_VERCEL_CLI_AUTH", authFile)
 	t.Setenv("AGENT_VERCEL_CREDENTIALS", filepath.Join(dir, "credentials.json"))
 
-	out, _, err := execCLI(t, srv.URL, "auth", "import-cli", "--label", "fromcli")
+	out, _, err := execCLI(t, srv.URL, "auth", "import-cli", "fromcli")
 	if err != nil {
 		t.Fatalf("import-cli: %v", err)
 	}

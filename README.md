@@ -49,7 +49,7 @@ git clone https://github.com/shhac/agent-vercel.git && cd agent-vercel && make b
 
 ```bash
 export VERCEL_TOKEN=...                  # create at vercel.com/account/tokens
-agent-vercel auth add --label personal   # store it in the Keychain
+agent-vercel auth add personal           # store it in the Keychain (label optional; default "default")
 agent-vercel auth test                   # verify (GET /v2/user)
 agent-vercel scope list                  # teams this credential can reach
 agent-vercel scope set-default acme       # default scope
