@@ -9,6 +9,9 @@ import (
 	"github.com/shhac/agent-vercel/internal/output"
 )
 
+// wrapAgent wraps a (usually decode) error as fixable_by: agent.
+func wrapAgent(err error) error { return agenterrors.Wrap(err, agenterrors.FixableByAgent) }
+
 // setIf sets a query param only when val is non-empty.
 func setIf(q url.Values, key, val string) {
 	if val != "" {

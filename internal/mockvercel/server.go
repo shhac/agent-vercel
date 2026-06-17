@@ -35,6 +35,11 @@ type Options struct {
 	BuildEvents    []map[string]any
 	RuntimeLogs    []map[string]any
 	Env            []map[string]any
+	Domains        []map[string]any
+	DomainConfig   map[string]any
+	DomainRecords  []map[string]any
+	Certs          map[string]map[string]any
+	Aliases        []map[string]any
 }
 
 // Option mutates Options.
@@ -112,6 +117,30 @@ func defaults() *Options {
 			{"id": "env_apiprev", "key": "API_URL", "target": []any{"preview"}, "type": "plain", "value": "https://preview.example.com"},
 			{"id": "env_onlyprod", "key": "ONLY_PROD", "target": []any{"production"}, "type": "encrypted", "value": "p"},
 			{"id": "env_onlyprev", "key": "ONLY_PREVIEW", "target": []any{"preview"}, "type": "encrypted", "value": "v"},
+		},
+		Domains: []map[string]any{
+			{
+				"name": "example.com", "verified": true, "serviceType": "external",
+				"nameservers":         []any{"ns1.registrar.com", "ns2.registrar.com"},
+				"intendedNameservers": []any{"ns1.vercel-dns.com", "ns2.vercel-dns.com"},
+				"expiresAt":           int64(1763200000000), "renew": true,
+			},
+		},
+		DomainConfig: map[string]any{
+			"misconfigured":      true,
+			"configuredBy":       nil,
+			"acceptedChallenges": []any{},
+		},
+		DomainRecords: []map[string]any{
+			{"id": "rec_1", "type": "A", "name": "", "value": "76.76.21.21", "ttl": 60},
+			{"id": "rec_2", "type": "CNAME", "name": "www", "value": "cname.vercel-dns.com", "ttl": 60},
+		},
+		Certs: map[string]map[string]any{
+			"cert_1": {"id": "cert_1", "createdAt": int64(1716000000000), "expiresAt": int64(1763200000000), "autoRenew": true, "cns": []any{"example.com", "www.example.com"}},
+		},
+		Aliases: []map[string]any{
+			{"uid": "alias_1", "alias": "example.com", "created": "2026-05-01T10:00:00.000Z"},
+			{"uid": "alias_2", "alias": "web-ready.vercel.app", "created": "2026-05-01T10:00:00.000Z", "protectionBypass": map[string]any{"scope": "shareable-link"}},
 		},
 	}
 }
@@ -197,6 +226,46 @@ func New(opts ...Option) http.Handler {
 			envs = append(envs, ev)
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"envs": envs})
+	}))
+
+	mux.HandleFunc("GET /v5/domains", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"domains":    o.Domains,
+			"pagination": map[string]any{"count": len(o.Domains)},
+		})
+	}))
+	mux.HandleFunc("GET /v5/domains/{domain}", requireBearer(func(w http.ResponseWriter, r *http.Request) {
+		name := r.PathValue("domain")
+		for _, d := range o.Domains {
+			if d["name"] == name {
+				writeJSON(w, http.StatusOK, map[string]any{"domain": d})
+				return
+			}
+		}
+		writeErr(w, http.StatusNotFound, "not_found", "domain not found: "+name)
+	}))
+	mux.HandleFunc("GET /v6/domains/{domain}/config", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, o.DomainConfig)
+	}))
+	mux.HandleFunc("GET /v5/domains/{domain}/records", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"records":    o.DomainRecords,
+			"pagination": map[string]any{"count": len(o.DomainRecords)},
+		})
+	}))
+	mux.HandleFunc("GET /v8/certs/{id}", requireBearer(func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if c, ok := o.Certs[id]; ok {
+			writeJSON(w, http.StatusOK, c)
+			return
+		}
+		writeErr(w, http.StatusNotFound, "not_found", "cert not found: "+id)
+	}))
+	mux.HandleFunc("GET /v2/deployments/{id}/aliases", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"aliases":    o.Aliases,
+			"pagination": map[string]any{"count": len(o.Aliases)},
+		})
 	}))
 
 	return mux

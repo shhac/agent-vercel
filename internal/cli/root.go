@@ -80,6 +80,8 @@ func newRootCmd(version string) *cobra.Command {
 	registerDeployment(root, g)
 	registerProject(root, g)
 	registerEnv(root, g)
+	registerDomain(root, g)
+	registerAlias(root, g)
 
 	// Surface flag-parse errors as fixable_by: agent; Execute renders them.
 	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
