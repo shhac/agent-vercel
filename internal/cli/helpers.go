@@ -51,6 +51,27 @@ func compactRows(items []json.RawMessage, full bool, fn func(json.RawMessage) (m
 	return rows, nil
 }
 
+// bodyLimit resolves the effective max body length: the global --max-body-chars
+// when set, else the per-command default. A negative value means unlimited.
+func bodyLimit(g *GlobalFlags, def int) int {
+	if g.MaxBodyChars != 0 {
+		return g.MaxBodyChars
+	}
+	return def
+}
+
+// truncate shortens s to n runes with a "\n…" marker. n < 0 means unlimited.
+func truncate(s string, n int) string {
+	if n < 0 {
+		return s
+	}
+	r := []rune(s)
+	if len(r) <= n {
+		return s
+	}
+	return string(r[:n]) + "\n…"
+}
+
 // printRaw prints a raw API payload in the resolved single-resource format
 // (decoded so --format and null-pruning apply).
 func printRaw(g *GlobalFlags, raw json.RawMessage) error {

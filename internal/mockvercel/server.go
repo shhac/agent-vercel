@@ -32,6 +32,9 @@ type Options struct {
 	Deployments    []map[string]any
 	Projects       []map[string]any
 	RollingRelease map[string]any
+	BuildEvents    []map[string]any
+	RuntimeLogs    []map[string]any
+	Env            []map[string]any
 }
 
 // Option mutates Options.
@@ -93,6 +96,22 @@ func defaults() *Options {
 				},
 				"currentCanaryPercentage": 25,
 			},
+		},
+		BuildEvents: []map[string]any{
+			{"type": "stdout", "created": int64(1716206500000), "payload": map[string]any{"text": "Running \"next build\""}},
+			{"type": "stderr", "created": int64(1716206501000), "payload": map[string]any{"text": "Error: build failed", "statusCode": 500}},
+			{"type": "exit", "created": int64(1716206502000), "payload": map[string]any{"text": "Command exited with 1"}},
+		},
+		RuntimeLogs: []map[string]any{
+			{"level": "info", "source": "serverless", "message": "GET /api/health 200", "timestampInMs": int64(1716206600000), "requestMethod": "GET", "requestPath": "/api/health", "responseStatusCode": 200},
+			{"level": "error", "source": "serverless", "message": "GET /api/users 500 boom", "timestampInMs": int64(1716206601000), "requestMethod": "GET", "requestPath": "/api/users", "responseStatusCode": 500},
+		},
+		Env: []map[string]any{
+			{"id": "env_shared", "key": "KEY_SHARED", "target": []any{"production", "preview"}, "type": "encrypted", "value": "shared-val"},
+			{"id": "env_apiprod", "key": "API_URL", "target": []any{"production"}, "type": "plain", "value": "https://prod.example.com"},
+			{"id": "env_apiprev", "key": "API_URL", "target": []any{"preview"}, "type": "plain", "value": "https://preview.example.com"},
+			{"id": "env_onlyprod", "key": "ONLY_PROD", "target": []any{"production"}, "type": "encrypted", "value": "p"},
+			{"id": "env_onlyprev", "key": "ONLY_PREVIEW", "target": []any{"preview"}, "type": "encrypted", "value": "v"},
 		},
 	}
 }
@@ -159,6 +178,25 @@ func New(opts ...Option) http.Handler {
 	}))
 	mux.HandleFunc("GET /v1/projects/{idOrName}/rolling-release", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, o.RollingRelease)
+	}))
+
+	mux.HandleFunc("GET /v3/deployments/{id}/events", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, o.BuildEvents)
+	}))
+	mux.HandleFunc("GET /v1/projects/{projectId}/deployments/{deploymentId}/runtime-logs", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, o.RuntimeLogs)
+	}))
+	mux.HandleFunc("GET /v10/projects/{idOrName}/env", requireBearer(func(w http.ResponseWriter, r *http.Request) {
+		decrypt := r.URL.Query().Get("decrypt") == "true"
+		envs := make([]map[string]any, 0, len(o.Env))
+		for _, e := range o.Env {
+			ev := cloneMap(e)
+			if !decrypt {
+				delete(ev, "value")
+			}
+			envs = append(envs, ev)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"envs": envs})
 	}))
 
 	return mux
