@@ -6,7 +6,7 @@ the `agent-*` CLI family (`agent-slack`, `agent-stripe`, `agent-postmark`, `lin`
 …), sharing their conventions, output contract, and credential handling.
 
 > **Status:** feature-complete. The full command surface (auth, scope,
-> deployment, project, env, domain, alias, api, config, cache) is implemented
+> deployment, project, env, domain, alias, api, config) is implemented
 > and tested against a fixture Vercel server (`internal/mockvercel`). See
 > [`design-docs/`](design-docs/) for design decisions.
 
@@ -69,7 +69,6 @@ agent-vercel usage                       # LLM-oriented overview
 | `alias` | `list`, `set`*, `rm`* |
 | `api` | `call <METHOD> <path>` (raw escape hatch) |
 | `config` | `get`, `set`, `list`, `unset` |
-| `cache` | `info`, `warm`, `purge` |
 
 \* destructive / state-changing — requires `--yes`.
 

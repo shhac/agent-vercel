@@ -22,7 +22,7 @@ func authImportCLICmd(g *GlobalFlags) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				store, err := credential.New()
+				store, err := newCredStore()
 				if err != nil {
 					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
 				}

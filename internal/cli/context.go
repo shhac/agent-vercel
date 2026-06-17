@@ -9,6 +9,11 @@ import (
 	"github.com/shhac/agent-vercel/internal/vercel"
 )
 
+// newCredStore constructs the credential store. It is a package var so tests
+// can substitute an in-memory Keychain + temp file and never touch the real
+// macOS Keychain. Production uses credential.New.
+var newCredStore = credential.New
+
 // resolved bundles the active client with the store and the resolved selectors,
 // so commands can both call the API and persist resolution metadata (e.g. cache
 // the username or team list) without re-resolving.
@@ -27,7 +32,7 @@ type resolved struct {
 //	auth:  --auth label → VERCEL_TOKEN env → stored default credential
 //	scope: --scope flag → VERCEL_SCOPE / VERCEL_TEAM_ID env → stored default
 func resolveClient(g *GlobalFlags) (*resolved, error) {
-	store, err := credential.New()
+	store, err := newCredStore()
 	if err != nil {
 		return nil, agenterrors.Wrap(err, agenterrors.FixableByHuman)
 	}

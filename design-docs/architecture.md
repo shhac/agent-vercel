@@ -21,7 +21,6 @@ agent-vercel/
 │   │   ├── alias.go              # `alias` group (list/set/rm)
 │   │   ├── api.go                # `api call` escape hatch
 │   │   ├── config.go             # `config` group
-│   │   ├── cache.go              # `cache` group
 │   │   └── helpers.go / listout.go / context.go  # shared output, resolution, gating
 │   ├── credential/              # auth + scope store, Keychain boundary
 │   ├── vercel/                  # REST client: DI transport, retry, error mapping,
@@ -54,9 +53,10 @@ agent-vercel/
 
 - `Store` reads/writes the credentials file and the backing `Keychain`.
 - **Two axes, one store.** `Auth{Label, Type, Secret, UserID, Username}` is the
-  secret axis (with a `Type` discriminator, currently `token`); `Scope{ID, Slug,
-  Name}` (cached) plus `DefaultScope` is the scope axis. `DefaultAuth` and
-  `DefaultScope` resolve the per-invocation defaults.
+  secret axis (with a `Type` discriminator, currently `token`); `DefaultScope`
+  (a team slug) is the scope axis. `DefaultAuth` and `DefaultScope` resolve the
+  per-invocation defaults. (No team metadata is cached — Vercel slugs/names are
+  used directly.)
 - **`Keychain` interface** (`Get/Set/Delete/Available`) is injected:
   `securityKeychain` (macOS `security` CLI) on darwin, `noopKeychain` elsewhere
   (falls back to the 0600 file), `MemoryKeychain` in tests. The Keychain account

@@ -2,12 +2,18 @@ package cli
 
 import (
 	"os"
+	"strings"
 
 	"github.com/shhac/agent-vercel/internal/credential"
+	"github.com/shhac/agent-vercel/internal/dialog"
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
 	"github.com/shhac/agent-vercel/internal/output"
 	"github.com/spf13/cobra"
 )
+
+// promptSecret opens a native OS dialog for secret entry. It is a package var so
+// tests substitute a stub and never pop a real dialog.
+var promptSecret = dialog.Secret
 
 // registerAuth wires the `auth` group: management of the credential(s) — the
 // secret half of the credential/scope split. The secret lives in the Keychain
@@ -21,22 +27,23 @@ func registerAuth(root *cobra.Command, g *GlobalFlags) {
 	}
 
 	var label string
+	var form bool
 
 	add := &cobra.Command{
 		Use:   "add",
-		Short: "Store a credential from $VERCEL_TOKEN into the Keychain",
-		Long: "Reads the access token from $VERCEL_TOKEN and stores it in the Keychain under --label.\n" +
-			"The secret is never echoed and never written to the credentials file.\n" +
-			"(A native-dialog --form entry path is planned; see design-docs.)",
+		Short: "Store a credential in the Keychain (from $VERCEL_TOKEN or --form dialog)",
+		Long: "Stores a Vercel access token in the Keychain under --label.\n" +
+			"With --form, a native OS dialog prompts the human for the token so it\n" +
+			"never appears in the agent's conversation. Otherwise the token is read\n" +
+			"from $VERCEL_TOKEN. The secret is never echoed or written to the file.",
 		Args: cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return run(func() error {
-				tok := os.Getenv("VERCEL_TOKEN")
-				if tok == "" {
-					return agenterrors.New("no token provided", agenterrors.FixableByHuman).
-						WithHint("set VERCEL_TOKEN (create one at vercel.com/account/tokens) then rerun 'agent-vercel auth add'")
+				tok, err := readNewToken(form)
+				if err != nil {
+					return err
 				}
-				store, err := credential.New()
+				store, err := newCredStore()
 				if err != nil {
 					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
 				}
@@ -53,6 +60,7 @@ func registerAuth(root *cobra.Command, g *GlobalFlags) {
 		},
 	}
 	add.Flags().StringVar(&label, "label", "default", "label to store the credential under")
+	add.Flags().BoolVar(&form, "form", false, "prompt for the token via a native OS dialog (keeps it out of the conversation)")
 
 	list := &cobra.Command{
 		Use:     "list",
@@ -61,7 +69,7 @@ func registerAuth(root *cobra.Command, g *GlobalFlags) {
 		Args:    cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return run(func() error {
-				store, err := credential.New()
+				store, err := newCredStore()
 				if err != nil {
 					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
 				}
@@ -131,7 +139,7 @@ func registerAuth(root *cobra.Command, g *GlobalFlags) {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			return run(func() error {
-				store, err := credential.New()
+				store, err := newCredStore()
 				if err != nil {
 					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
 				}
@@ -150,7 +158,7 @@ func registerAuth(root *cobra.Command, g *GlobalFlags) {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			return run(func() error {
-				store, err := credential.New()
+				store, err := newCredStore()
 				if err != nil {
 					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
 				}
@@ -164,4 +172,27 @@ func registerAuth(root *cobra.Command, g *GlobalFlags) {
 
 	cmd.AddCommand(add, list, test, setDefault, remove, authImportCLICmd(g))
 	root.AddCommand(cmd)
+}
+
+// readNewToken obtains a token to store: via the OS dialog when form is set,
+// else from $VERCEL_TOKEN. Either way the value never transits the agent.
+func readNewToken(form bool) (string, error) {
+	if form {
+		v, err := promptSecret("agent-vercel", "Paste your Vercel access token:")
+		if err != nil {
+			return "", agenterrors.New("token entry was cancelled", agenterrors.FixableByHuman).
+				WithHint("rerun 'agent-vercel auth add --form' and paste the token into the dialog")
+		}
+		if v = strings.TrimSpace(v); v != "" {
+			return v, nil
+		}
+		return "", agenterrors.New("empty token entered", agenterrors.FixableByHuman).
+			WithHint("rerun 'agent-vercel auth add --form' and paste a non-empty token")
+	}
+	tok := strings.TrimSpace(os.Getenv("VERCEL_TOKEN"))
+	if tok == "" {
+		return "", agenterrors.New("no token provided", agenterrors.FixableByHuman).
+			WithHint("use 'agent-vercel auth add --form' to enter it via dialog, or set VERCEL_TOKEN (create one at vercel.com/account/tokens)")
+	}
+	return tok, nil
 }

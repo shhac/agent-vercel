@@ -3,7 +3,6 @@ package cli
 import (
 	"os"
 
-	"github.com/shhac/agent-vercel/internal/credential"
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
 	"github.com/shhac/agent-vercel/internal/output"
 	"github.com/spf13/cobra"
@@ -34,14 +33,6 @@ func registerScope(root *cobra.Command, g *GlobalFlags) {
 				if err != nil {
 					return err
 				}
-				// Cache the team metadata (non-secret) for scope resolution and
-				// completions; best-effort.
-				scopes := make([]credential.Scope, 0, len(teams))
-				for _, t := range teams {
-					scopes = append(scopes, credential.Scope{ID: t.ID, Slug: t.Slug, Name: t.Name})
-				}
-				_ = r.store.SetScopes(scopes)
-
 				w := output.NewNDJSONWriter(os.Stdout)
 				for _, t := range teams {
 					_ = w.WriteItem(map[string]any{
@@ -62,7 +53,7 @@ func registerScope(root *cobra.Command, g *GlobalFlags) {
 		Args:  cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			return run(func() error {
-				store, err := credential.New()
+				store, err := newCredStore()
 				if err != nil {
 					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
 				}
@@ -92,7 +83,7 @@ func registerScope(root *cobra.Command, g *GlobalFlags) {
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			return run(func() error {
-				store, err := credential.New()
+				store, err := newCredStore()
 				if err != nil {
 					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
 				}

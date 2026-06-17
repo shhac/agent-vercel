@@ -10,9 +10,9 @@ the OpenAPI spec (`openapi.vercel.sh`) as of 2026-06.
   token reaches every team the user belongs to (subject to token scope).
 - **Scope is a query param.** Almost every endpoint accepts `teamId` **or**
   `slug` to act within a team. Omitting both acts on the personal account. We
-  send `teamId` when we have the id (from cached `scope list`), else `slug`.
+  send `teamId` when the scope is a `team_…` id, else `slug`.
 - `GET /v2/user` identifies the token's owner (used by `auth test`/`whoami`).
-- `GET /v2/teams` lists reachable teams (used by `scope list`, cached to id/slug).
+- `GET /v2/teams` lists reachable teams (used by `scope list`).
 
 ## Deployments
 

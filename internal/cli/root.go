@@ -84,7 +84,6 @@ func newRootCmd(version string) *cobra.Command {
 	registerAlias(root, g)
 	registerAPI(root, g)
 	registerConfig(root, g)
-	registerCache(root, g)
 
 	// Attach a `usage` subcommand to every domain group (generated from the
 	// command tree), so `agent-vercel <domain> usage` works uniformly.

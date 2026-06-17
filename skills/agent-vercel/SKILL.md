@@ -42,12 +42,17 @@ Pick per command: `--auth <label>` (which credential) and
 ## Setup (once)
 
 ```bash
-export VERCEL_TOKEN=...                    # human creates one at vercel.com/account/tokens
+agent-vercel auth add --form               # human pastes the token into an OS dialog (preferred)
+# …or, non-interactively:
+export VERCEL_TOKEN=...                     # token from vercel.com/account/tokens
 agent-vercel auth add --label personal     # stores it in the Keychain
 agent-vercel auth test                     # verify (GET /v2/user)
 agent-vercel scope list                    # teams this credential can reach
 agent-vercel scope set-default acme        # default scope for later calls
 ```
+
+Prefer `auth add --form` — it keeps the token out of the conversation and shell
+history. Never ask the user to paste a token into chat.
 
 ## Triage (reading)
 

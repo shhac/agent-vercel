@@ -15,7 +15,7 @@
 
 | Command | Notes |
 |---|---|
-| `auth add --label <l>` | stores `$VERCEL_TOKEN` in the Keychain; never echoes it |
+| `auth add --label <l>` | stores a token in the Keychain; `--form` prompts via OS dialog, else reads `$VERCEL_TOKEN`; never echoes it |
 | `auth list` (`ls`) | label, type, default, username, `secret_status` (keychain/file/missing) — never the secret |
 | `auth test` (`whoami`) | verifies via `GET /v2/user` |
 | `auth set-default <label>` | |
@@ -96,9 +96,8 @@ distinct from the agent-vercel access token (never readable).
 |---|---|
 | `api call <METHOD> <path>` | `--query 'k=v&…'`, `--body <json\|->`. GET ungated; non-GET needs `--yes` |
 
-## config / cache
+## config
 
 | Command | Notes |
 |---|---|
-| `config get\|set\|list\|unset` | persists settings (TTLs) |
-| `cache info\|warm\|purge` | project name→id, team slug→id resolution caches |
+| `config get\|set\|list\|unset` | persists ordinary settings in config.json |

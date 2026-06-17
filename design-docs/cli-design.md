@@ -61,13 +61,13 @@ it lacks.
 
 | Command | Key flags | Gate | Notes |
 |---|---|---|---|
-| `auth add` | `--label` (default), `--form` (planned) | | reads `VERCEL_TOKEN`; stores in Keychain; never echoes |
+| `auth add` | `--label` (default), `--form` | | `--form` prompts via OS dialog, else reads `VERCEL_TOKEN`; stores in Keychain; never echoes |
 | `auth list` (`ls`) | | | label, type, default, username, `secret_status` (keychain/file/missing) — never the secret |
 | `auth test` (`whoami`) | | | `GET /v2/user`; resolves + caches username |
 | `auth set-default <label>` | | | |
 | `auth remove <label>` | | | deletes Keychain entry too |
 | `auth import-cli` | | | optional: read a token from `vercel login` (`~/.local/share/com.vercel.cli/auth.json`) |
-| `scope list` (`ls`) | | | `GET /v2/teams`; caches id/slug/name for completions + scope resolution |
+| `scope list` (`ls`) | | | `GET /v2/teams` (live; names/slugs are used directly, no resolution cache) |
 | `scope current` | | | active scope + default credential |
 | `scope set-default <slug>` | | | empty arg → personal account |
 | `deployment list` | `--project`, `--state`, `--target`, `--branch`, `--sha`, `--user`, `--since`, `--until`, `--limit`, `--app` | | NDJSON; org/scope-wide; `GET /v6/deployments` |
@@ -98,8 +98,7 @@ it lacks.
 | `alias set <deployment> <alias>` | | `--yes` | `POST /v2/deployments/{id}/aliases` |
 | `alias rm <alias>` | | `--yes` | |
 | `api call <METHOD> <path>` | `--query`, `--body <json\|->` | `--yes` if non-GET | raw REST escape hatch |
-| `config get/set/list/unset` | | | persists settings (TTLs) in `config.json` |
-| `cache info/warm/purge` | | | project name→id, team slug→id resolution caches |
+| `config get/set/list/unset` | | | persists settings in `config.json` |
 | `usage`, `<domain> usage` | | | self-docs |
 
 ## Mutation gating (`--yes`)
@@ -186,6 +185,10 @@ real even though the caller typed the method). This is `lin api query` /
 
 - **No `vercel`-binary wrapping** at runtime (only the optional `auth
   import-cli` reads its auth file).
+- **No resolution cache.** Unlike `agent-slack` (opaque Slack IDs must be
+  resolved to names to be readable), Vercel project names and team slugs are
+  first-class API identifiers the endpoints accept directly — like `lin`, there
+  is no id-resolution step to cache. (`config` persists ordinary settings.)
 - **No usage/billing/analytics** answers in v1 (no clean REST query; see the
   caveat above). Possible later `log-drain` domain.
 - **No self-update** command; distribution is brew / `go install`.

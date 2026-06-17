@@ -39,7 +39,6 @@ CORE DOMAINS (proposed; see design-docs/cli-design.md)
   auth         add | list | test | set-default | remove | import-cli
   api          call <METHOD> <path>       (raw REST escape hatch)
   config       get | set | list | unset
-  cache        info | warm | purge
 
   * destructive / state-changing — requires --yes.
 

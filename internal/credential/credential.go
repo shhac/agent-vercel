@@ -60,21 +60,12 @@ func (a Auth) normalizeType() AuthType {
 	return a.Type
 }
 
-// Scope is cached, non-secret team metadata so `scope`/`--scope` resolution and
-// completions work without a network round-trip. Never holds secret material.
-type Scope struct {
-	ID   string `json:"id"`
-	Slug string `json:"slug"`
-	Name string `json:"name,omitempty"`
-}
-
 type Credentials struct {
-	Version      int     `json:"version"`
-	UpdatedAt    string  `json:"updated_at,omitempty"`
-	DefaultAuth  string  `json:"default_auth,omitempty"`  // credential label
-	DefaultScope string  `json:"default_scope,omitempty"` // team slug; "" means personal account
-	Auths        []Auth  `json:"auths"`
-	Scopes       []Scope `json:"scopes,omitempty"`
+	Version      int    `json:"version"`
+	UpdatedAt    string `json:"updated_at,omitempty"`
+	DefaultAuth  string `json:"default_auth,omitempty"`  // credential label
+	DefaultScope string `json:"default_scope,omitempty"` // team slug; "" means personal account
+	Auths        []Auth `json:"auths"`
 }
 
 // ErrAuthNotFound is returned when no stored credential matches a request.
@@ -240,16 +231,6 @@ func (s *Store) SetDefaultScope(scope string) error {
 		return err
 	}
 	creds.DefaultScope = scope
-	return s.Save(creds)
-}
-
-// SetScopes replaces the cached team metadata (non-secret).
-func (s *Store) SetScopes(scopes []Scope) error {
-	creds, err := s.Load()
-	if err != nil {
-		return err
-	}
-	creds.Scopes = scopes
 	return s.Save(creds)
 }
 

@@ -79,17 +79,17 @@ Resolution order:
   `app.paulie.agent-vercel`, account `token:<label>`), following the family
   reverse-DNS convention.
 - The credentials file (`~/.config/agent-vercel/credentials.json`, XDG, 0600)
-  holds **only non-secret metadata** — label, default flags, resolved username,
-  cached team list — with a `__KEYCHAIN__` placeholder where the token would be.
+  holds **only non-secret metadata** — label, default flags, resolved username —
+  with a `__KEYCHAIN__` placeholder where the token would be.
 - **There is deliberately no command that reads the token back out.** `auth
   list` reports *where* each secret lives (`keychain` / `file` / `missing`) via a
   Keychain probe that never returns secret material (`SecretStatuses`). The token
   leaves the Keychain only to populate an `Authorization: Bearer` header inside
   the binary. An agent driving this tool cannot exfiltrate the token through it.
-- Token entry that avoids the agent's conversation: `auth add` reads
-  `VERCEL_TOKEN` from the environment (set by the human out-of-band); a native OS
-  dialog path (`--form`, zenity, family precedent agent-slack/agent-posthog) is
-  planned so a human can paste a token without it transiting chat.
+- Token entry that avoids the agent's conversation: `auth add --form` opens a
+  native OS dialog (zenity; family precedent agent-slack/agent-posthog) so a
+  human pastes the token without it transiting chat; otherwise `auth add` reads
+  `VERCEL_TOKEN` from the environment.
 
 ## Command surface (overview)
 
@@ -106,7 +106,6 @@ Full surface, flags, and gating live in `cli-design.md`. Domains:
 - **alias**: `list`, `set`, `rm`
 - **api**: `call <METHOD> <path>` (raw REST escape hatch)
 - **config**: `get`, `set`, `list`, `unset`
-- **cache**: `info`, `warm`, `purge`
 - **usage** / `<domain> usage`
 
 ### Targets
@@ -152,7 +151,7 @@ Full surface, flags, and gating live in `cli-design.md`. Domains:
 5. **Read slice C**: `domain list/get/inspect/records/cert`, `alias list`.
 6. **Writes** (behind `--yes`): `deployment promote/rollback/cancel/redeploy`,
    `env set/rm`, `domain add/rm/verify`, `alias set/rm`.
-7. **Escape hatch + ergonomics**: `api call`, `cache`, `config`, per-domain
+7. **Escape hatch + ergonomics**: `api call`, `config`, per-domain
    `usage`, `auth import-cli`.
 
 ## Decisions
