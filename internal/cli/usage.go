@@ -24,17 +24,18 @@ CREDENTIAL vs SCOPE (two separate axes)
   The secret is NEVER printed; there is no command to read it back out.
 
 SETUP (once)
-  export VERCEL_TOKEN=...                  # create one at vercel.com/account/tokens
-  agent-vercel auth add --label personal   # stores it in the Keychain
+  agent-vercel auth add --form             # human pastes the token into an OS dialog (preferred)
+  export VERCEL_TOKEN=...                  # …or create one at vercel.com/account/tokens
+  agent-vercel auth add personal           # stores it in the Keychain (label optional)
   agent-vercel auth test                   # verify (calls /v2/user)
   agent-vercel scope list                  # teams this credential can reach
   agent-vercel scope set-default acme      # default scope for later calls
 
-CORE DOMAINS (proposed; see design-docs/cli-design.md)
+CORE DOMAINS (see design-docs/cli-design.md)
   deployment   list | get | logs | runtime-logs | current | promote* | rollback* | cancel* | redeploy*
   project      list | get
-  env          list | diff | get | set* | rm*
-  domain       list | get | inspect | records | verify* | add* | rm*
+  env          list | diff | get | pull | set* | rm*
+  domain       list | get | inspect | records | cert | verify* | add* | rm*
   alias        list | set* | rm* | bypass*
   billing      charges [--by service|project]   (what is driving spend)
   scope        list | current | set-default

@@ -106,7 +106,7 @@ func resolveToken(g *GlobalFlags, creds *credential.Credentials) (string, *crede
 
 func missingSecretErr(label string) error {
 	return agenterrors.Newf(agenterrors.FixableByHuman, "credential %q has no secret in the Keychain", label).
-		WithHint("re-add it: set VERCEL_TOKEN then run 'agent-vercel auth add --label " + label + "'")
+		WithHint("re-add it: set VERCEL_TOKEN then run 'agent-vercel auth add " + label + "'")
 }
 
 func firstNonEmpty(vals ...string) string {
