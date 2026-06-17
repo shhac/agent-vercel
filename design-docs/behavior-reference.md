@@ -3,6 +3,16 @@
 The Vercel-side facts the implementation depends on. Endpoints verified against
 the OpenAPI spec (`openapi.vercel.sh`) as of 2026-06.
 
+## Endpoint availability: spec ≠ live (validate before relying)
+
+The published OpenAPI spec lists endpoints that **404 on the real
+`api.vercel.com`**. Confirmed 404 live (with a valid token/scope) despite being
+in the spec: `GET /v4/aliases` (alias list), `GET /v3/events` (audit log),
+`GET /v1/security/firewall/events`. Treat the spec as a candidate list, not
+ground truth — wire a new endpoint behind the `integration` test harness and
+probe it live before shipping. (We shipped scope-wide `alias list` from the spec
+and had to revert it when it 404'd live.)
+
 ## Auth and scope
 
 - **Bearer token.** `Authorization: Bearer <token>` against
