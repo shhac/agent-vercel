@@ -67,3 +67,12 @@ func (c *Client) AssignAlias(ctx context.Context, deploymentID, alias string) (j
 func (c *Client) DeleteAlias(ctx context.Context, aliasID string) (json.RawMessage, error) {
 	return c.Do(ctx, http.MethodDelete, "/v2/aliases/"+url.PathEscape(aliasID), nil, nil)
 }
+
+// SetAliasProtectionBypass — PATCH /aliases/{id}/protection-bypass. Creates a
+// shareable bypass link for a deployment-protected alias (optionally with a TTL)
+// or revokes an existing one. The returned bypass secret is the share link the
+// caller asked to create — distinct from the agent-vercel auth token, which is
+// never emitted.
+func (c *Client) SetAliasProtectionBypass(ctx context.Context, id string, body any) (json.RawMessage, error) {
+	return c.Do(ctx, http.MethodPatch, "/aliases/"+url.PathEscape(id)+"/protection-bypass", nil, body)
+}

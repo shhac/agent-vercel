@@ -311,6 +311,17 @@ func New(opts ...Option) http.Handler {
 	mux.HandleFunc("DELETE /v2/aliases/{id}", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"status": "SUCCESS"})
 	}))
+	mux.HandleFunc("PATCH /aliases/{id}/protection-bypass", requireBearer(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if _, ok := body["revoke"]; ok {
+			writeJSON(w, http.StatusOK, map[string]any{"revoked": true})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"protectionBypass": map[string]any{"scope": "shareable-link", "secret": "vc-bypass-abc123"},
+		})
+	}))
 
 	return mux
 }

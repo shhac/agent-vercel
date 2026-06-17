@@ -41,8 +41,53 @@ func registerAlias(root *cobra.Command, g *GlobalFlags) {
 	}
 	listCursor, listAll = addPageFlags(list)
 
-	cmd.AddCommand(list, aliasSetCmd(g), aliasRmCmd(g))
+	cmd.AddCommand(list, aliasSetCmd(g), aliasRmCmd(g), aliasBypassCmd(g))
 	root.AddCommand(cmd)
+}
+
+func aliasBypassCmd(g *GlobalFlags) *cobra.Command {
+	var ttl int
+	var revoke string
+	var regenerate bool
+	var yes *bool
+	cmd := &cobra.Command{
+		Use:   "bypass <alias|deployment-id>",
+		Short: "Create or revoke a shareable protection-bypass link for a gated (401-ing) preview",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			action := "create a protection-bypass link for " + args[0]
+			if revoke != "" {
+				action = "revoke a protection-bypass link for " + args[0]
+			}
+			if err := requireYes(*yes, action, "agent-vercel alias bypass "+args[0]+" --yes"); err != nil {
+				return err
+			}
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			body := map[string]any{}
+			if ttl > 0 {
+				body["ttl"] = ttl
+			}
+			if revoke != "" {
+				body["revoke"] = map[string]any{"secret": revoke, "regenerate": regenerate}
+			}
+			raw, err := r.client.SetAliasProtectionBypass(cmd.Context(), args[0], body)
+			if err != nil {
+				return err
+			}
+			if len(raw) == 0 {
+				return printSingle(g, map[string]any{"ok": true})
+			}
+			return printRaw(g, raw)
+		},
+	}
+	cmd.Flags().IntVar(&ttl, "ttl", 0, "seconds the shareable link stays valid (0 = no expiry)")
+	cmd.Flags().StringVar(&revoke, "revoke", "", "revoke this bypass secret instead of creating one")
+	cmd.Flags().BoolVar(&regenerate, "regenerate", false, "with --revoke, mint a fresh link after revoking")
+	yes = addYesFlag(cmd)
+	return cmd
 }
 
 func aliasSetCmd(g *GlobalFlags) *cobra.Command {

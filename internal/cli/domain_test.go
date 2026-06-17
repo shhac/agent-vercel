@@ -91,3 +91,44 @@ func TestAliasListSurfacesProtection(t *testing.T) {
 		t.Fatalf("protection_bypass should be surfaced: %v", rows[1])
 	}
 }
+
+func TestAliasBypassCreate(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	out, _, err := execCLI(t, srv.URL, "alias", "bypass", "web-ready.vercel.app", "--yes")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	m := decodeJSON(t, out)
+	pb, ok := m["protectionBypass"].(map[string]any)
+	if !ok || pb["secret"] != "vc-bypass-abc123" {
+		t.Fatalf("bypass create = %v", m)
+	}
+}
+
+func TestAliasBypassRevoke(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	out, _, err := execCLI(t, srv.URL, "alias", "bypass", "web-ready.vercel.app", "--revoke", "old-secret", "--yes")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if m := decodeJSON(t, out); m["revoked"] != true {
+		t.Fatalf("bypass revoke = %v", m)
+	}
+}
+
+func TestAliasBypassGated(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	_, errOut, err := execCLI(t, srv.URL, "alias", "bypass", "web-ready.vercel.app")
+	if err == nil {
+		t.Fatal("expected gate")
+	}
+	if m := decodeJSON(t, errOut); m["fixable_by"] != "human" {
+		t.Fatalf("bypass should be gated: %v", m)
+	}
+}

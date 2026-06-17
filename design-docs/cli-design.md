@@ -97,6 +97,7 @@ it lacks.
 | `alias list <deployment>` | | | `GET /v2/deployments/{id}/aliases`; surfaces `protectionBypass` |
 | `alias set <deployment> <alias>` | | `--yes` | `POST /v2/deployments/{id}/aliases` |
 | `alias rm <alias>` | | `--yes` | |
+| `alias bypass <alias\|id>` | `--ttl`, `--revoke`, `--regenerate` | `--yes` | `PATCH /aliases/{id}/protection-bypass`; mint/revoke a shareable link to a 401-ing preview |
 | `api call <METHOD> <path>` | `--query`, `--body <json\|->` | `--yes` if non-GET | raw REST escape hatch |
 | `config get/set/list/unset` | | | persists settings in `config.json` |
 | `usage`, `<domain> usage` | | | self-docs |

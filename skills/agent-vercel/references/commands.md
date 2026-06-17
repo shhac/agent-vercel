@@ -90,6 +90,7 @@ distinct from the agent-vercel access token (never readable).
 | `alias list <deployment>` | surfaces `protectionBypass` (why a preview 401s) |
 | `alias set <deployment> <alias>` * | repoint |
 | `alias rm <alias>` * | |
+| `alias bypass <alias\|id>` * | `--ttl`, `--revoke <secret>`, `--regenerate` — mint/revoke a shareable bypass link for a gated preview |
 
 ## api (escape hatch)
 
