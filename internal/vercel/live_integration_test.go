@@ -151,6 +151,24 @@ func TestLiveDeploymentShape(t *testing.T) {
 	if single.ID == "" && single.UID == "" {
 		t.Fatal("v13 GetDeployment missing id/uid")
 	}
+
+	// deployment aliases endpoint must exist and yield {uid,alias} items.
+	aliases, _, err := c.DeploymentAliases(ctx, firstID, url.Values{})
+	if err != nil {
+		t.Fatalf("DeploymentAliases: %v", err)
+	}
+	for _, raw := range aliases {
+		var a struct {
+			UID   string `json:"uid"`
+			Alias string `json:"alias"`
+		}
+		if err := json.Unmarshal(raw, &a); err != nil {
+			t.Fatalf("decode alias: %v", err)
+		}
+		if a.UID == "" || a.Alias == "" {
+			t.Fatal("alias item missing uid/alias")
+		}
+	}
 }
 
 func TestLiveProjectAndEnvShape(t *testing.T) {
@@ -206,15 +224,49 @@ func TestLiveDomainShape(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListDomains: %v", err)
 	}
+	if len(items) == 0 {
+		t.Skip("no domains in this scope to validate config/records")
+	}
+	var first struct {
+		Name string `json:"name"`
+	}
 	for _, raw := range items {
-		var d struct {
-			Name string `json:"name"`
-		}
-		if err := json.Unmarshal(raw, &d); err != nil {
+		if err := json.Unmarshal(raw, &first); err != nil {
 			t.Fatalf("decode domain: %v", err)
 		}
-		if d.Name == "" {
+		if first.Name == "" {
 			t.Fatal("domain missing name")
+		}
+	}
+
+	ctx := liveCtx(t)
+	// domain config endpoint must exist and carry the misconfigured flag.
+	cfg, err := c.DomainConfig(ctx, first.Name)
+	if err != nil {
+		t.Fatalf("DomainConfig: %v", err)
+	}
+	var conf map[string]any
+	if err := json.Unmarshal(cfg, &conf); err != nil {
+		t.Fatalf("decode domain config: %v", err)
+	}
+	if _, ok := conf["misconfigured"]; !ok {
+		t.Fatal("domain config missing 'misconfigured' (domain inspect relies on it)")
+	}
+
+	// records endpoint must exist; items carry type/value.
+	recs, _, err := c.DomainRecords(ctx, first.Name, url.Values{})
+	if err != nil {
+		t.Fatalf("DomainRecords: %v", err)
+	}
+	for _, raw := range recs {
+		var rec struct {
+			Type string `json:"type"`
+		}
+		if err := json.Unmarshal(raw, &rec); err != nil {
+			t.Fatalf("decode record: %v", err)
+		}
+		if rec.Type == "" {
+			t.Fatal("DNS record missing type")
 		}
 	}
 }
