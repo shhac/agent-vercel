@@ -76,10 +76,11 @@ agent-vercel usage                       # LLM-oriented overview
 ## Development
 
 ```bash
-make test   # go test ./... -count=1
+make test             # go test ./... -count=1 (offline; uses the mock server)
 make vet
-make lint   # golangci-lint
+make lint             # golangci-lint
 make dev ARGS="usage"
+make test-integration # opt-in live API shape checks (read-only; needs a token)
 ```
 
 ## License

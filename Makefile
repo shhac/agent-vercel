@@ -12,6 +12,12 @@ test:
 test-short:
 	GOCACHE=$(GOCACHE) go test ./... -count=1 -short
 
+# Opt-in live tests against the real Vercel API (read-only). Provide a token via
+# $AGENT_VERCEL_IT_TOKEN, or a stored credential via $AGENT_VERCEL_IT_AUTH (label)
+# + optional $AGENT_VERCEL_IT_SCOPE; they skip if neither is available.
+test-integration:
+	GOCACHE=$(GOCACHE) go test -tags integration ./... -count=1 -run Live -v
+
 lint:
 	golangci-lint run ./...
 

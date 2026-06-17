@@ -31,6 +31,14 @@ GOCACHE=$(pwd)/.cache/go-build go vet ./...
 golangci-lint run ./...
 ```
 
+Live API shape checks are opt-in (build tag `integration`), so the default test
+run stays offline/green. To run them against real Vercel (read-only):
+
+```bash
+make test-integration   # uses $AGENT_VERCEL_IT_TOKEN, or a stored credential
+                        # via $AGENT_VERCEL_IT_AUTH (+ optional $AGENT_VERCEL_IT_SCOPE)
+```
+
 ## References
 
 The full design and command surface live in `design-docs/`:

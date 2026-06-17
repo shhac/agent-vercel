@@ -103,3 +103,7 @@ agent-vercel/
 - `cli`: executes the root command in-process against the mock; asserts exact
   NDJSON / JSON / error-JSON shapes and the `--yes` gating (the agent-visible
   contract).
+- `vercel` live (build tag `integration`, opt-in): hits the real API with a
+  token from env or a stored credential and asserts response *shape* (field
+  presence our mappers depend on), never values — the guard against
+  mock-vs-reality drift. Excluded from the default build/CI.
