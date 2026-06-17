@@ -88,6 +88,43 @@ func registerAuth(root *cobra.Command, g *GlobalFlags) {
 		},
 	}
 
+	test := &cobra.Command{
+		Use:     "test",
+		Aliases: []string{"whoami"},
+		Short:   "Verify the active credential and show the token owner (GET /v2/user)",
+		Args:    cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return run(func() error {
+				r, err := resolveClient(g)
+				if err != nil {
+					return err
+				}
+				user, err := r.client.GetUser(cmd.Context())
+				if err != nil {
+					return err
+				}
+				// Cache the resolved username back onto the stored credential
+				// (best-effort) so `auth list` can show it.
+				if r.auth != nil && user.Username != "" && r.auth.Username != user.Username {
+					a := *r.auth
+					a.Username = user.Username
+					a.UserID = user.ID
+					_ = r.store.Upsert(a)
+				}
+				scope := r.scope
+				if scope == "" {
+					scope = "(personal account)"
+				}
+				return printSingle(g, map[string]any{
+					"user_id":  user.ID,
+					"username": user.Username,
+					"email":    user.Email,
+					"scope":    scope,
+				})
+			})
+		},
+	}
+
 	setDefault := &cobra.Command{
 		Use:   "set-default <label>",
 		Short: "Set the default credential label",
@@ -125,6 +162,6 @@ func registerAuth(root *cobra.Command, g *GlobalFlags) {
 		},
 	}
 
-	cmd.AddCommand(add, list, setDefault, remove)
+	cmd.AddCommand(add, list, test, setDefault, remove)
 	root.AddCommand(cmd)
 }

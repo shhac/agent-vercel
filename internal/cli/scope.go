@@ -22,29 +22,33 @@ func registerScope(root *cobra.Command, g *GlobalFlags) {
 	list := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
-		Short:   "List scopes (teams) reachable by the active credential (cached)",
+		Short:   "List scopes (teams) reachable by the active credential (GET /v2/teams)",
 		Args:    cobra.NoArgs,
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			return run(func() error {
-				store, err := credential.New()
+				r, err := resolveClient(g)
 				if err != nil {
-					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
+					return err
 				}
-				creds, err := store.Load()
+				teams, err := r.client.ListTeams(cmd.Context())
 				if err != nil {
-					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
+					return err
 				}
-				if len(creds.Scopes) == 0 {
-					output.WriteNotice(os.Stderr, "no cached scopes",
-						"live 'scope list' (GET /v2/teams) lands with the API client; see design-docs")
+				// Cache the team metadata (non-secret) for scope resolution and
+				// completions; best-effort.
+				scopes := make([]credential.Scope, 0, len(teams))
+				for _, t := range teams {
+					scopes = append(scopes, credential.Scope{ID: t.ID, Slug: t.Slug, Name: t.Name})
 				}
+				_ = r.store.SetScopes(scopes)
+
 				w := output.NewNDJSONWriter(os.Stdout)
-				for _, sc := range creds.Scopes {
+				for _, t := range teams {
 					_ = w.WriteItem(map[string]any{
-						"id":      sc.ID,
-						"slug":    sc.Slug,
-						"name":    sc.Name,
-						"default": sc.Slug == creds.DefaultScope,
+						"id":      t.ID,
+						"slug":    t.Slug,
+						"name":    t.Name,
+						"default": t.Slug == r.creds.DefaultScope,
 					})
 				}
 				return nil
