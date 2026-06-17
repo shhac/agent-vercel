@@ -65,6 +65,13 @@ func (c *Client) GetProject(ctx context.Context, idOrName string) (json.RawMessa
 	return c.Get(ctx, "/v9/projects/"+url.PathEscape(idOrName), nil)
 }
 
+// ProjectCrons — GET /v1/projects/{idOrName}/crons. The cron schedule a
+// project's current production deployment runs (path + schedule per job), plus
+// whether crons are enabled. The payload nests the data under a "crons" key.
+func (c *Client) ProjectCrons(ctx context.Context, idOrName string) (json.RawMessage, error) {
+	return c.Get(ctx, "/v1/projects/"+url.PathEscape(idOrName)+"/crons", nil)
+}
+
 // RollingRelease — GET /v1/projects/{idOrName}/rolling-release.
 func (c *Client) RollingRelease(ctx context.Context, idOrName string) (json.RawMessage, error) {
 	return c.Get(ctx, "/v1/projects/"+url.PathEscape(idOrName)+"/rolling-release", nil)

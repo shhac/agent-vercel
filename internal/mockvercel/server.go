@@ -34,6 +34,7 @@ type Options struct {
 	Deployments      []map[string]any
 	Projects         []map[string]any
 	RollingRelease   map[string]any
+	ProjectCrons     map[string]any
 	DeploymentChecks []map[string]any
 	BuildEvents      []map[string]any
 	RuntimeLogs      []map[string]any
@@ -63,6 +64,9 @@ func WithDeployments(d []map[string]any) Option { return func(o *Options) { o.De
 func WithDeploymentChecks(c []map[string]any) Option {
 	return func(o *Options) { o.DeploymentChecks = c }
 }
+
+// WithProjectCrons overrides the fixture project crons payload.
+func WithProjectCrons(c map[string]any) Option { return func(o *Options) { o.ProjectCrons = c } }
 
 // WithRuntimeLogsHang makes the runtime-logs endpoint hold the connection open
 // after emitting its lines, simulating Vercel's open-ended log stream.
@@ -119,6 +123,18 @@ func defaults() *Options {
 					"id": "dpl_canary", "url": "web-canary.vercel.app", "readyState": "READY", "target": "production",
 				},
 				"currentCanaryPercentage": 25,
+			},
+		},
+		ProjectCrons: map[string]any{
+			"crons": map[string]any{
+				"enabledAt":    int64(1716200000000),
+				"disabledAt":   nil,
+				"updatedAt":    int64(1716206800000),
+				"deploymentId": "dpl_ready",
+				"definitions": []any{
+					map[string]any{"host": "web-ready.vercel.app", "path": "/api/cron/sync", "schedule": "0 5 * * *"},
+					map[string]any{"host": "web-ready.vercel.app", "path": "/api/cron/digest", "schedule": "*/15 * * * *"},
+				},
 			},
 		},
 		DeploymentChecks: []map[string]any{
@@ -241,6 +257,9 @@ func New(opts ...Option) http.Handler {
 	}))
 	mux.HandleFunc("GET /v1/projects/{idOrName}/rolling-release", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, o.RollingRelease)
+	}))
+	mux.HandleFunc("GET /v1/projects/{idOrName}/crons", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, o.ProjectCrons)
 	}))
 
 	mux.HandleFunc("GET /v3/deployments/{id}/events", requireBearer(func(w http.ResponseWriter, _ *http.Request) {

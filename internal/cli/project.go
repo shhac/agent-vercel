@@ -69,8 +69,68 @@ func registerProject(root *cobra.Command, g *GlobalFlags) {
 		},
 	}
 
-	cmd.AddCommand(list, get)
+	crons := &cobra.Command{
+		Use:   "crons <id|name>",
+		Short: "Show the cron jobs a project runs and whether crons are enabled",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			raw, err := r.client.ProjectCrons(cmd.Context(), args[0])
+			if err != nil {
+				return err
+			}
+			if g.Full {
+				return printRaw(g, raw)
+			}
+			m, err := compactCrons(raw)
+			if err != nil {
+				return err
+			}
+			m["project"] = args[0]
+			return printSingle(g, m)
+		},
+	}
+
+	cmd.AddCommand(list, get, crons)
 	root.AddCommand(cmd)
+}
+
+type rawCrons struct {
+	Crons struct {
+		EnabledAt    int64  `json:"enabledAt"`
+		DisabledAt   *int64 `json:"disabledAt"`
+		UpdatedAt    int64  `json:"updatedAt"`
+		DeploymentID string `json:"deploymentId"`
+		Definitions  []struct {
+			Host     string `json:"host"`
+			Path     string `json:"path"`
+			Schedule string `json:"schedule"`
+		} `json:"definitions"`
+	} `json:"crons"`
+}
+
+// compactCrons projects the crons config: whether crons are enabled (an
+// enabledAt with no later disabledAt) and the path/schedule of each job.
+func compactCrons(raw json.RawMessage) (map[string]any, error) {
+	var c rawCrons
+	if err := json.Unmarshal(raw, &c); err != nil {
+		return nil, wrapAgent(err)
+	}
+	cr := c.Crons
+	m := map[string]any{"enabled": cr.EnabledAt != 0 && cr.DisabledAt == nil}
+	putIf(m, "deployment_id", cr.DeploymentID)
+	putIf(m, "updated", msToRFC3339(cr.UpdatedAt))
+	jobs := make([]any, 0, len(cr.Definitions))
+	for _, d := range cr.Definitions {
+		j := map[string]any{"path": d.Path, "schedule": d.Schedule}
+		putIf(j, "host", d.Host)
+		jobs = append(jobs, j)
+	}
+	m["jobs"] = jobs
+	return m, nil
 }
 
 type rawProject struct {
