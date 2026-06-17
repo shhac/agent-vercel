@@ -11,7 +11,7 @@ import (
 // deploymentRef resolves a deployment id/url to its canonical id, project id,
 // name, and target — needed by the project-scoped write endpoints.
 func deploymentRef(ctx context.Context, client *vercel.Client, idOrURL string) (id, projectID, name, target string, err error) {
-	raw, err := client.GetDeployment(ctx, idOrURL)
+	raw, err := client.GetDeployment(ctx, cleanRef(idOrURL))
 	if err != nil {
 		return "", "", "", "", err
 	}

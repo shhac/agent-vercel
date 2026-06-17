@@ -34,7 +34,7 @@ func deploymentLogsCmd(g *GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			events, err := r.client.DeploymentEvents(cmd.Context(), args[0], q)
+			events, err := r.client.DeploymentEvents(cmd.Context(), cleanRef(args[0]), q)
 			if err != nil {
 				return err
 			}
@@ -72,7 +72,7 @@ func deploymentRuntimeLogsCmd(g *GlobalFlags) *cobra.Command {
 			}
 			// Runtime logs are keyed by projectId + deploymentId; resolve
 			// both from the deployment first.
-			raw, err := r.client.GetDeployment(cmd.Context(), args[0])
+			raw, err := r.client.GetDeployment(cmd.Context(), cleanRef(args[0]))
 			if err != nil {
 				return err
 			}

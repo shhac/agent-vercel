@@ -31,10 +31,25 @@ type GlobalFlags struct {
 func Execute(version string) error {
 	root := newRootCmd(version)
 	if err := root.Execute(); err != nil {
-		writeErr(err)
+		writeErr(annotateError(err))
 		return err
 	}
 	return nil
+}
+
+// annotateError adds a usage hint to cobra's bare "unknown command" error (an
+// unknown top-level command isn't caught by handleUnknownSubcommand, which only
+// covers unknown subcommands of a known group).
+func annotateError(err error) error {
+	var aerr *agenterrors.APIError
+	if agenterrors.As(err, &aerr) {
+		return err
+	}
+	if strings.Contains(err.Error(), "unknown command") {
+		return agenterrors.New(err.Error(), agenterrors.FixableByAgent).
+			WithHint("run 'agent-vercel usage' to see the available domains")
+	}
+	return err
 }
 
 func newRootCmd(version string) *cobra.Command {

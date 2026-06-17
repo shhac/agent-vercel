@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -45,16 +46,54 @@ CORE DOMAINS (proposed; see design-docs/cli-design.md)
 Run 'agent-vercel <domain> usage' for per-domain detail.`
 
 func registerUsage(root *cobra.Command) {
+	var asJSON bool
 	cmd := &cobra.Command{
 		Use:   "usage",
-		Short: "LLM-oriented overview of agent-vercel",
+		Short: "LLM-oriented overview of agent-vercel (--json for a machine-readable catalog)",
 		Args:  cobra.NoArgs,
-		RunE: func(_ *cobra.Command, _ []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if asJSON {
+				return printCommandCatalog(cmd.Root())
+			}
 			_, _ = fmt.Fprintln(os.Stdout, usageOverview)
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&asJSON, "json", false, "emit the command catalog as JSON for programmatic discovery")
 	root.AddCommand(cmd)
+}
+
+// printCommandCatalog emits the command tree as JSON so an agent can discover the
+// surface (domains, subcommands, one-line descriptions) without parsing prose.
+func printCommandCatalog(root *cobra.Command) error {
+	type sub struct {
+		Name  string `json:"name"`
+		Use   string `json:"use"`
+		Short string `json:"short"`
+	}
+	type domain struct {
+		Name        string `json:"name"`
+		Short       string `json:"short"`
+		Subcommands []sub  `json:"subcommands,omitempty"`
+	}
+	var domains []domain
+	for _, c := range root.Commands() {
+		if c.Hidden || c.Name() == "help" || c.Name() == "completion" {
+			continue
+		}
+		d := domain{Name: c.Name(), Short: c.Short}
+		for _, s := range c.Commands() {
+			if s.Hidden || s.Name() == "usage" {
+				continue
+			}
+			d.Subcommands = append(d.Subcommands, sub{Name: s.Name(), Use: s.Use, Short: s.Short})
+		}
+		domains = append(domains, d)
+	}
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	enc.SetEscapeHTML(false)
+	return enc.Encode(map[string]any{"commands": domains})
 }
 
 // attachDomainUsage gives every domain group a `usage` subcommand generated from

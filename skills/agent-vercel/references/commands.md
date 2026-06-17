@@ -11,6 +11,8 @@
 - `--max-body-chars <n>` — truncate long log/body fields (`-1` = unlimited).
 - `--timeout <ms>` / `-t`, `--debug` / `-d`.
 - list commands also take `--cursor <next_cursor>` (page from a prior `@pagination`) and `--all` (follow all pages, capped).
+- deployment targets accept a `dpl_…` id, a bare host (`web-abc.vercel.app`), or a full URL (`https://web-abc.vercel.app/path`).
+- `agent-vercel usage --json` emits a machine-readable command catalog (domains, subcommands, descriptions).
 
 ## auth (credential — the secret)
 

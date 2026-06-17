@@ -4,11 +4,25 @@ import (
 	"encoding/json"
 	"net/url"
 	"os"
+	"strings"
 
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
 	"github.com/shhac/agent-vercel/internal/output"
 	"github.com/spf13/cobra"
 )
+
+// cleanRef normalizes a deployment target an agent or human might paste — a full
+// URL like "https://web-abc.vercel.app/path" — down to the host the API expects.
+// Deployment ids (dpl_…) and bare hosts pass through unchanged.
+func cleanRef(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.TrimPrefix(s, "https://")
+	s = strings.TrimPrefix(s, "http://")
+	if i := strings.IndexByte(s, '/'); i >= 0 {
+		s = s[:i]
+	}
+	return s
+}
 
 // addYesFlag registers the standard --yes gate flag and returns the bound value,
 // keeping the flag's name/default/wording identical across every gated command.

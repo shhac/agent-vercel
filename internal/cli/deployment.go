@@ -102,7 +102,7 @@ func deploymentGetCmd(g *GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			raw, err := r.client.GetDeployment(cmd.Context(), args[0])
+			raw, err := r.client.GetDeployment(cmd.Context(), cleanRef(args[0]))
 			if err != nil {
 				return err
 			}
