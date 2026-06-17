@@ -8,7 +8,7 @@
 - `--scope <team-slug|id>` / `-s` — which team to act on (omit = personal/default).
 - `--format <json|yaml|jsonl>` / `-f` — override output format.
 - `--full` — raw API payload instead of the compact projection.
-- `--max-body-chars <n>` — truncate long log/body fields (`-1` = unlimited).
+- `--max-body-chars <n>` — truncate long log/body fields (`0` = per-command default, `-1` = unlimited).
 - `--timeout <ms>` / `-t`, `--debug` / `-d`.
 - list commands also take `--cursor <next_cursor>` (page from a prior `@pagination`) and `--all` (follow all pages, capped).
 - deployment targets accept a `dpl_…` id, a bare host (`web-abc.vercel.app`), or a full URL (`https://web-abc.vercel.app/path`).

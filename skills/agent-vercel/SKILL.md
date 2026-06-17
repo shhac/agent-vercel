@@ -11,7 +11,7 @@ when_to_use: |
   which deploy is live in prod, list recent/failed deployments (across
   projects), fetch build or runtime logs, compare env vars between production
   and preview, check why a domain or SSL cert is misconfigured, inspect/repoint
-  an alias, or promote/rollback a deployment.
+  an alias, promote/rollback a deployment, or see what is driving Vercel spend.
 allowed-tools: Bash(agent-vercel *) Read
 ---
 
@@ -66,6 +66,7 @@ agent-vercel deployment runtime-logs dpl_… --level error --path /api
 agent-vercel env diff my-app                            # prod-vs-preview env var diff
 agent-vercel domain inspect example.com                 # missing DNS record / cert state
 agent-vercel alias list dpl_…                           # aliases + protection state
+agent-vercel billing charges --by service               # what is driving spend (last 30d)
 ```
 
 `deployment list` is **cross-project** and filterable — the main thing the
