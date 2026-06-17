@@ -5,10 +5,10 @@ Vercel CLI for AI agents — a token-efficient, structured-output tool for
 the `agent-*` CLI family (`agent-slack`, `agent-stripe`, `agent-postmark`, `lin`,
 …), sharing their conventions, output contract, and credential handling.
 
-> **Status:** scaffold. The repo layout, output/error contract, and the
-> credential/scope model (with the Keychain boundary) are in place and tested;
-> the API client and the read/write command domains are being built out per
-> [`design-docs/`](design-docs/).
+> **Status:** feature-complete. The full command surface (auth, scope,
+> deployment, project, env, domain, alias, api, config, cache) is implemented
+> and tested against a fixture Vercel server (`internal/mockvercel`). See
+> [`design-docs/`](design-docs/) for design decisions.
 
 ## Why this and not the `vercel` CLI
 

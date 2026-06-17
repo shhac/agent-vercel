@@ -14,14 +14,20 @@ agent-vercel/
 │   │   ├── usage.go              # `usage` overview
 │   │   ├── auth.go               # `auth` group   (credential / secret axis)
 │   │   ├── scope.go              # `scope` group  (scope axis)
-│   │   ├── deployment.go         # `deployment` group   (planned)
-│   │   ├── project.go            # `project` group      (planned)
-│   │   ├── env.go                # `env` group          (planned)
-│   │   ├── domain.go             # `domain` group       (planned)
-│   │   ├── alias.go              # `alias` group        (planned)
-│   │   └── api.go                # `api call` escape hatch (planned)
+│   │   ├── deployment.go         # `deployment` group (list/get/current + logs + writes)
+│   │   ├── project.go            # `project` group
+│   │   ├── env.go                # `env` group (list/diff/get/set/rm)
+│   │   ├── domain.go             # `domain` group (list/get/inspect/records/cert + writes)
+│   │   ├── alias.go              # `alias` group (list/set/rm)
+│   │   ├── api.go                # `api call` escape hatch
+│   │   ├── config.go             # `config` group
+│   │   ├── cache.go              # `cache` group
+│   │   └── helpers.go / listout.go / context.go  # shared output, resolution, gating
 │   ├── credential/              # auth + scope store, Keychain boundary
-│   ├── vercel/                  # REST client (DI transport, retry, mapping) — planned
+│   ├── vercel/                  # REST client: DI transport, retry, error mapping,
+│   │                            #   resources/logs/env/domain/writes methods
+│   ├── mockvercel/              # in-process fixture API (also cmd/mockvercel)
+│   ├── settings/               # config.json persistence
 │   ├── errors/                  # APIError{error, hint, fixable_by}
 │   └── output/                  # JSON/YAML/NDJSON writers, error/notice rendering
 ├── design-docs/
@@ -65,7 +71,7 @@ agent-vercel/
   boundary. Tested in `credential_test.go` (secret never in file, never in
   serialized status, 0600 perms, Keychain round-trip).
 
-## REST client (`internal/vercel`) — planned
+## REST client (`internal/vercel`)
 
 - A `Doer` interface (`Do(*http.Request) (*http.Response, error)`) is the
   injected seam; tests pass a fixture server / stub.
@@ -92,7 +98,8 @@ agent-vercel/
 
 - `credential`: in-memory Keychain + temp file; assert the secret never reaches
   disk or serialized output.
-- `vercel` (planned): fixture HTTP server returning recorded Vercel payloads;
-  assert retry/backoff, scope params, pagination, and error mapping.
-- `cli` (planned): execute the root command against a stubbed client; assert
-  exact NDJSON / JSON / error-JSON shapes (the agent-visible contract).
+- `vercel`: fixture HTTP server (`internal/mockvercel`); asserts retry/backoff,
+  scope params, auth header, and the status→fixable_by error mapping.
+- `cli`: executes the root command in-process against the mock; asserts exact
+  NDJSON / JSON / error-JSON shapes and the `--yes` gating (the agent-visible
+  contract).

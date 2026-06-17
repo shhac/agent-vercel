@@ -162,6 +162,6 @@ func registerAuth(root *cobra.Command, g *GlobalFlags) {
 		},
 	}
 
-	cmd.AddCommand(add, list, test, setDefault, remove)
+	cmd.AddCommand(add, list, test, setDefault, remove, authImportCLICmd(g))
 	root.AddCommand(cmd)
 }

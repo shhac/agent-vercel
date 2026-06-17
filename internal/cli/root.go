@@ -82,6 +82,13 @@ func newRootCmd(version string) *cobra.Command {
 	registerEnv(root, g)
 	registerDomain(root, g)
 	registerAlias(root, g)
+	registerAPI(root, g)
+	registerConfig(root, g)
+	registerCache(root, g)
+
+	// Attach a `usage` subcommand to every domain group (generated from the
+	// command tree), so `agent-vercel <domain> usage` works uniformly.
+	attachDomainUsage(root)
 
 	// Surface flag-parse errors as fixable_by: agent; Execute renders them.
 	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {

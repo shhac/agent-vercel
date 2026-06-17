@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -55,4 +56,35 @@ func registerUsage(root *cobra.Command) {
 		},
 	}
 	root.AddCommand(cmd)
+}
+
+// attachDomainUsage gives every domain group a `usage` subcommand generated from
+// the command tree, so `agent-vercel <domain> usage` documents that domain.
+func attachDomainUsage(root *cobra.Command) {
+	for _, c := range root.Commands() {
+		if c.Name() == "usage" || !c.HasSubCommands() {
+			continue
+		}
+		c.AddCommand(&cobra.Command{
+			Use:   "usage",
+			Short: "Usage for the " + c.Name() + " domain",
+			Args:  cobra.NoArgs,
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				printDomainUsage(cmd.Parent())
+				return nil
+			},
+		})
+	}
+}
+
+func printDomainUsage(c *cobra.Command) {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%s — %s\n\n", c.Name(), c.Short)
+	for _, sub := range c.Commands() {
+		if sub.Name() == "usage" || sub.Hidden {
+			continue
+		}
+		fmt.Fprintf(&b, "  %s %s\n      %s\n", c.Name(), sub.Use, sub.Short)
+	}
+	_, _ = fmt.Fprint(os.Stdout, b.String())
 }
