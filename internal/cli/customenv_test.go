@@ -49,6 +49,28 @@ func TestProjectCustomEnvironmentsAlias(t *testing.T) {
 	}
 }
 
+func TestProjectCustomEnvironmentsFull(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	// --full returns the raw API objects (with the nested branchMatcher object),
+	// not the compact projection's flattened "branch_matcher" string.
+	out, _, err := execCLI(t, srv.URL, "project", "custom-environments", "web", "--full")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	rows := ndjsonLines(t, out)
+	if len(rows) != 2 {
+		t.Fatalf("got %d rows, want 2: %s", len(rows), out)
+	}
+	if _, projected := rows[0]["branch_matcher"]; projected {
+		t.Fatalf("--full should not carry the compact branch_matcher key: %v", rows[0])
+	}
+	if _, raw := rows[0]["branchMatcher"]; !raw {
+		t.Fatalf("--full should expose the raw branchMatcher object: %v", rows[0])
+	}
+}
+
 func TestProjectCustomEnvironmentsEmpty(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New(mockvercel.WithCustomEnvironments([]map[string]any{})))
 	defer srv.Close()
