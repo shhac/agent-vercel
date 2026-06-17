@@ -42,7 +42,11 @@ access-aware — and never needs the `vercel` binary at runtime.
 
 Partially addressed by **`billing charges`** (`GET /v1/billing/charges`, FOCUS
 format): per-service / per-project billed cost and consumed quantity over a date
-range, with `--by` aggregation — this answers "what's driving spend". The
+range, with `--by` aggregation — this answers "what's driving spend". (Its FOCUS
+field shapes — `BilledCost`, `ServiceName`, `Tags.ProjectName`, … — are validated
+against the OpenAPI spec only; live validation couldn't reach billing data, as
+it needs a billing-role token we didn't have. Treat as spec-validated, not
+live-validated.) The
 remaining honest gap is **request-level observability** (error rates, traffic,
 Web Analytics): those have no clean REST query (dashboard + Log Drains only), so
 agent-vercel does not claim to answer "what's my error rate" — a `log-drain`

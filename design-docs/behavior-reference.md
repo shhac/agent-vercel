@@ -88,6 +88,17 @@ the OpenAPI spec (`openapi.vercel.sh`) as of 2026-06.
 - `PATCH /aliases/{id}/protection-bypass` — manage shareable-link bypass (TTL,
   revoke, regenerate). (Possible later `alias bypass` subcommand.)
 
+## Billing / usage
+
+- `GET /v1/billing/charges?from=&to=` — FOCUS v1.3 charges as **JSONL** (one
+  record per line), 1-day granularity, range ≤ 1 year. Record fields are
+  PascalCase: `BilledCost`, `BillingCurrency`, `ChargeCategory`,
+  `ConsumedQuantity`/`ConsumedUnit`, `ServiceName`, `ChargePeriodStart/End`,
+  and `Tags` (carries `ProjectName`/`ProjectId`). Needs a billing-role token.
+- **Validation status:** spec-only. Live validation could not reach billing data
+  (no billing-role token), so the field shapes above are trusted to the OpenAPI
+  spec, not confirmed against a live response.
+
 ## Error model
 
 - Errors are `{error: {code, message}}` with an HTTP status. Mapping to
