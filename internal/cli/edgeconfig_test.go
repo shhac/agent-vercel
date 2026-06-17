@@ -70,6 +70,28 @@ func TestEdgeConfigItemsEmpty(t *testing.T) {
 	}
 }
 
+func TestEdgeConfigListFull(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	// --full returns raw Edge Config objects (camelCase sizeInBytes) instead of
+	// the compact snake_case projection.
+	out, _, err := execCLI(t, srv.URL, "edge-config", "list", "--full")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	rows := ndjsonLines(t, out)
+	if len(rows) != 2 {
+		t.Fatalf("got %d rows, want 2: %s", len(rows), out)
+	}
+	if _, projected := rows[0]["item_count"]; projected {
+		t.Fatalf("--full should not carry compact item_count: %v", rows[0])
+	}
+	if _, raw := rows[0]["itemCount"]; !raw {
+		t.Fatalf("--full should expose raw itemCount: %v", rows[0])
+	}
+}
+
 func TestEdgeConfigAlias(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New())
 	defer srv.Close()
