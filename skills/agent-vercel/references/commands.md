@@ -18,7 +18,7 @@
 
 | Command | Notes |
 |---|---|
-| `auth add [label]` | stores a token in the Keychain under `label` (default "default"); `--form` prompts via OS dialog, else reads `$VERCEL_TOKEN`; never echoes it |
+| `auth add [label]` | stores a token in the Keychain under `label` (default "default"); `--form` prompts via OS dialog, else reads `$VERCEL_TOKEN`; verifies it (GET /v2/user) and records the username; never echoes the secret |
 | `auth list` (`ls`) | label, type, default, username, `secret_status` (keychain/file/missing) — never the secret |
 | `auth test` (`whoami`) | verifies via `GET /v2/user` |
 | `auth set-default <label>` | |

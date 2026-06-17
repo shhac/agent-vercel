@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/shhac/agent-vercel/internal/credential"
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
 	"github.com/spf13/cobra"
 )
@@ -21,14 +20,12 @@ func authImportCLICmd(g *GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			store, err := newCredStore()
+			out, err := storeNewToken(g, label, token)
 			if err != nil {
-				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
+				return err
 			}
-			if err := store.Upsert(credential.Auth{Label: label, Type: credential.AuthToken, Secret: token}); err != nil {
-				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-			}
-			return printSingle(g, map[string]any{"label": label, "imported_from": path, "stored": true})
+			out["imported_from"] = path
+			return printSingle(g, out)
 		},
 	}
 }

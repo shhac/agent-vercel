@@ -67,7 +67,7 @@ domain is a possible later addition.
 
 | Command | Key flags | Gate | Notes |
 |---|---|---|---|
-| `auth add [label]` | `--form` | | label positional (default "default"); `--form` prompts via OS dialog, else reads `VERCEL_TOKEN`; stores in Keychain; never echoes |
+| `auth add [label]` | `--form` | | label positional (default "default"); `--form` prompts via OS dialog, else reads `VERCEL_TOKEN`; verifies (best-effort GET /v2/user) and records username; stores in Keychain; never echoes |
 | `auth list` (`ls`) | | | label, type, default, username, `secret_status` (keychain/file/missing) — never the secret |
 | `auth test` (`whoami`) | | | `GET /v2/user`; resolves + caches username |
 | `auth set-default <label>` | | | |
@@ -80,7 +80,7 @@ domain is a possible later addition.
 | `deployment get <id\|url>` | | | compact: state, target, creator, commit, urls, timings, `errorCode` |
 | `deployment current <project>` | `--custom-env` | | live prod deployment + rolling-release state; `--custom-env` shows the newest READY deploy in a custom environment |
 | `deployment logs <id\|url>` | `--since`, `--until`, `--status`, `--limit`, `--max-body-chars` | | build events; `GET /v3/deployments/{id}/events` |
-| `deployment runtime-logs <id\|url>` | `--level`, `--status`, `--path`, `--max-body-chars` | | `GET /v1/projects/{id}/deployments/{id}/runtime-logs` |
+| `deployment runtime-logs <id\|url>` | `--level`, `--status`, `--path`, `--limit`, `--max-body-chars` | | bounded live tail: collects for the `--timeout` window (default 6s) then returns; `GET /v1/projects/{id}/deployments/{id}/runtime-logs` (NDJSON stream) |
 | `deployment promote <id>` | | `--yes` | repoint prod to this deployment |
 | `deployment rollback <id>` | | `--yes` | |
 | `deployment cancel <id>` | | `--yes` | cancel an in-progress build |

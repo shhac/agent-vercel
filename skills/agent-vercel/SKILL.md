@@ -45,8 +45,8 @@ Pick per command: `--auth <label>` (which credential) and
 agent-vercel auth add --form               # human pastes the token into an OS dialog (preferred)
 # …or, non-interactively:
 export VERCEL_TOKEN=...                     # token from vercel.com/account/tokens
-agent-vercel auth add personal             # stores it in the Keychain (label optional)
-agent-vercel auth test                     # verify (GET /v2/user)
+agent-vercel auth add personal             # stores it in the Keychain (label optional); verifies + records username
+agent-vercel auth test                     # re-verify any time (GET /v2/user)
 agent-vercel scope list                    # teams this credential can reach
 agent-vercel scope set-default acme        # default scope for later calls
 ```

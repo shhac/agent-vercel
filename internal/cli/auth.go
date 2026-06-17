@@ -1,19 +1,61 @@
 package cli
 
 import (
+	"context"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/shhac/agent-vercel/internal/credential"
 	"github.com/shhac/agent-vercel/internal/dialog"
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
 	"github.com/shhac/agent-vercel/internal/output"
+	"github.com/shhac/agent-vercel/internal/vercel"
 	"github.com/spf13/cobra"
 )
 
 // promptSecret opens a native OS dialog for secret entry. It is a package var so
 // tests substitute a stub and never pop a real dialog.
 var promptSecret = dialog.Secret
+
+// storeNewToken verifies a freshly-entered token (best-effort GET /v2/user, to
+// capture identity for `auth list` and catch a bad token early), then stores it.
+// Verification failure never blocks the store — the token is saved and the
+// returned map reports verified:false with a hint to run `auth test`.
+func storeNewToken(g *GlobalFlags, label, tok string) (map[string]any, error) {
+	username, userID, verified, note := verifyNewToken(g, tok)
+	store, err := newCredStore()
+	if err != nil {
+		return nil, agenterrors.Wrap(err, agenterrors.FixableByHuman)
+	}
+	if err := store.Upsert(credential.Auth{
+		Label: label, Type: credential.AuthToken, Secret: tok, Username: username, UserID: userID,
+	}); err != nil {
+		return nil, agenterrors.Wrap(err, agenterrors.FixableByHuman)
+	}
+	out := map[string]any{"label": label, "type": string(credential.AuthToken), "stored": true, "verified": verified}
+	if verified {
+		out["username"] = username
+	} else {
+		out["hint"] = note
+	}
+	return out, nil
+}
+
+// verifyNewToken does a best-effort identity lookup with a not-yet-stored token.
+func verifyNewToken(g *GlobalFlags, tok string) (username, userID string, verified bool, note string) {
+	c, err := vercel.New(vercel.Config{BaseURL: g.BaseURL, Token: tok, Scope: g.Scope, Timeout: time.Duration(g.TimeoutMS) * time.Millisecond})
+	if err != nil {
+		return "", "", false, "stored, but the token could not be verified"
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	u, err := c.GetUser(ctx)
+	if err != nil {
+		return "", "", false, "stored, but the token could not be verified — run 'agent-vercel auth test'"
+	}
+	return u.Username, u.ID, true, ""
+}
 
 // registerAuth wires the `auth` group: management of the credential(s) — the
 // secret half of the credential/scope split. The secret lives in the Keychain
@@ -43,19 +85,11 @@ func registerAuth(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			store, err := newCredStore()
+			out, err := storeNewToken(g, label, tok)
 			if err != nil {
-				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
+				return err
 			}
-			if err := store.Upsert(credential.Auth{Label: label, Type: credential.AuthToken, Secret: tok}); err != nil {
-				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-			}
-			return printSingle(g, map[string]any{
-				"label":  label,
-				"type":   string(credential.AuthToken),
-				"stored": true,
-				"hint":   "run 'agent-vercel auth test' to verify",
-			})
+			return printSingle(g, out)
 		},
 	}
 	add.Flags().BoolVar(&form, "form", false, "prompt for the token via a native OS dialog (keeps it out of the conversation)")

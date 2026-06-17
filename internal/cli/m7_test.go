@@ -126,6 +126,30 @@ func TestAuthAddForm(t *testing.T) {
 	}
 }
 
+func TestAuthAddCapturesIdentity(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	store := credential.NewWithStore(filepath.Join(t.TempDir(), "creds.json"), credential.NewMemoryKeychain())
+	oldStore := newCredStore
+	newCredStore = func() (*credential.Store, error) { return store, nil }
+	t.Cleanup(func() { newCredStore = oldStore })
+
+	// env-token path (execCLI sets VERCEL_TOKEN); add verifies against the mock
+	out, _, err := execCLI(t, srv.URL, "auth", "add", "cap")
+	if err != nil {
+		t.Fatalf("add: %v", err)
+	}
+	if m := decodeJSON(t, out); m["verified"] != true || m["username"] != "acme-bot" {
+		t.Fatalf("add should verify and capture username: %v", m)
+	}
+	// username is persisted, so `auth list` shows it without a separate auth test
+	creds, _ := store.Load()
+	if len(creds.Auths) != 1 || creds.Auths[0].Username != "acme-bot" {
+		t.Fatalf("username not captured at add time: %+v", creds.Auths)
+	}
+}
+
 func TestAuthAddFormCancelled(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New())
 	defer srv.Close()
