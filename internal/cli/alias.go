@@ -14,6 +14,8 @@ func registerAlias(root *cobra.Command, g *GlobalFlags) {
 		RunE:  func(c *cobra.Command, args []string) error { return handleUnknownSubcommand(c, args) },
 	}
 
+	var listCursor *string
+	var listAll *bool
 	list := &cobra.Command{
 		Use:   "list <deployment>",
 		Short: "List the aliases assigned to a deployment",
@@ -23,7 +25,10 @@ func registerAlias(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			items, page, err := r.client.DeploymentAliases(cmd.Context(), args[0], url.Values{})
+			items, next, err := fetchPaged(url.Values{}, *listCursor, *listAll, func(q url.Values) ([]json.RawMessage, *int64, error) {
+				it, p, e := r.client.DeploymentAliases(cmd.Context(), args[0], q)
+				return it, p.Next, e
+			})
 			if err != nil {
 				return err
 			}
@@ -31,9 +36,10 @@ func registerAlias(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			return emitList(g, rows, paginationMeta(page.Next))
+			return emitList(g, rows, paginationMeta(next))
 		},
 	}
+	listCursor, listAll = addPageFlags(list)
 
 	cmd.AddCommand(list, aliasSetCmd(g), aliasRmCmd(g))
 	root.AddCommand(cmd)

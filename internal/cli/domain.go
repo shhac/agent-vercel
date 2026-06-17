@@ -15,6 +15,8 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 		RunE:  func(c *cobra.Command, args []string) error { return handleUnknownSubcommand(c, args) },
 	}
 
+	var listCursor *string
+	var listAll *bool
 	list := &cobra.Command{
 		Use:   "list",
 		Short: "List domains in the scope",
@@ -24,7 +26,10 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			items, page, err := r.client.ListDomains(cmd.Context(), url.Values{})
+			items, next, err := fetchPaged(url.Values{}, *listCursor, *listAll, func(q url.Values) ([]json.RawMessage, *int64, error) {
+				it, p, e := r.client.ListDomains(cmd.Context(), q)
+				return it, p.Next, e
+			})
 			if err != nil {
 				return err
 			}
@@ -32,9 +37,10 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			return emitList(g, rows, paginationMeta(page.Next))
+			return emitList(g, rows, paginationMeta(next))
 		},
 	}
+	listCursor, listAll = addPageFlags(list)
 
 	get := &cobra.Command{
 		Use:   "get <domain>",
@@ -93,6 +99,8 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 		},
 	}
 
+	var recCursor *string
+	var recAll *bool
 	records := &cobra.Command{
 		Use:   "records <domain>",
 		Short: "List DNS records for a domain",
@@ -102,7 +110,10 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			items, page, err := r.client.DomainRecords(cmd.Context(), args[0], url.Values{})
+			items, next, err := fetchPaged(url.Values{}, *recCursor, *recAll, func(q url.Values) ([]json.RawMessage, *int64, error) {
+				it, p, e := r.client.DomainRecords(cmd.Context(), args[0], q)
+				return it, p.Next, e
+			})
 			if err != nil {
 				return err
 			}
@@ -110,9 +121,10 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			return emitList(g, rows, paginationMeta(page.Next))
+			return emitList(g, rows, paginationMeta(next))
 		},
 	}
+	recCursor, recAll = addPageFlags(records)
 
 	cert := &cobra.Command{
 		Use:   "cert <id>",

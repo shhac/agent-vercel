@@ -18,6 +18,8 @@ func registerProject(root *cobra.Command, g *GlobalFlags) {
 
 	var search string
 	var limit int
+	var cursor *string
+	var all *bool
 	list := &cobra.Command{
 		Use:   "list",
 		Short: "List projects in the scope",
@@ -32,7 +34,10 @@ func registerProject(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			items, page, err := r.client.ListProjects(cmd.Context(), q)
+			items, next, err := fetchPaged(q, *cursor, *all, func(q url.Values) ([]json.RawMessage, *int64, error) {
+				it, p, e := r.client.ListProjects(cmd.Context(), q)
+				return it, p.Next, e
+			})
 			if err != nil {
 				return err
 			}
@@ -40,9 +45,10 @@ func registerProject(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			return emitList(g, rows, paginationMeta(page.Next))
+			return emitList(g, rows, paginationMeta(next))
 		},
 	}
+	cursor, all = addPageFlags(list)
 	list.Flags().StringVar(&search, "search", "", "filter projects by name substring")
 	list.Flags().IntVar(&limit, "limit", 0, "max projects to return")
 

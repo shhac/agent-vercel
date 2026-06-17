@@ -8,6 +8,8 @@ package mockvercel
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -168,10 +170,12 @@ func New(opts ...Option) http.Handler {
 		if target := r.URL.Query().Get("target"); target != "" {
 			items = filterMaps(items, "target", target)
 		}
-		writeJSON(w, http.StatusOK, map[string]any{
-			"deployments": items,
-			"pagination":  map[string]any{"count": len(items)},
-		})
+		page, next := pageByCreated(items, r.URL.Query().Get("until"), r.URL.Query().Get("limit"))
+		pag := map[string]any{"count": len(page)}
+		if next != nil {
+			pag["next"] = *next
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"deployments": page, "pagination": pag})
 	}))
 	mux.HandleFunc("GET /v13/deployments/{id}", requireBearer(func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
@@ -309,6 +313,41 @@ func New(opts ...Option) http.Handler {
 	}))
 
 	return mux
+}
+
+// pageByCreated emulates Vercel's timestamp-cursor pagination: items sorted
+// newest-first, filtered to created < until, then the first `limit` returned
+// with a `next` cursor (the last item's created) when more remain.
+func pageByCreated(items []map[string]any, untilStr, limitStr string) ([]map[string]any, *int64) {
+	sorted := append([]map[string]any(nil), items...)
+	sort.Slice(sorted, func(i, j int) bool { return asInt64(sorted[i]["created"]) > asInt64(sorted[j]["created"]) })
+	if until, err := strconv.ParseInt(untilStr, 10, 64); err == nil && untilStr != "" {
+		kept := make([]map[string]any, 0, len(sorted))
+		for _, m := range sorted {
+			if asInt64(m["created"]) < until {
+				kept = append(kept, m)
+			}
+		}
+		sorted = kept
+	}
+	if limit, err := strconv.Atoi(limitStr); err == nil && limit > 0 && limit < len(sorted) {
+		page := sorted[:limit]
+		next := asInt64(page[len(page)-1]["created"])
+		return page, &next
+	}
+	return sorted, nil
+}
+
+func asInt64(v any) int64 {
+	switch n := v.(type) {
+	case int64:
+		return n
+	case int:
+		return int64(n)
+	case float64:
+		return int64(n)
+	}
+	return 0
 }
 
 func filterMaps(items []map[string]any, key, want string) []map[string]any {

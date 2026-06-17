@@ -10,6 +10,7 @@
 - `--full` — raw API payload instead of the compact projection.
 - `--max-body-chars <n>` — truncate long log/body fields (`-1` = unlimited).
 - `--timeout <ms>` / `-t`, `--debug` / `-d`.
+- list commands also take `--cursor <next_cursor>` (page from a prior `@pagination`) and `--all` (follow all pages, capped).
 
 ## auth (credential — the secret)
 

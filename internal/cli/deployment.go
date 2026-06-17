@@ -36,6 +36,8 @@ func registerDeployment(root *cobra.Command, g *GlobalFlags) {
 func deploymentListCmd(g *GlobalFlags) *cobra.Command {
 	var project, state, target, branch, sha, user, since, until string
 	var limit int
+	var cursor *string
+	var all *bool
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List deployments across the scope, filterable",
@@ -62,7 +64,10 @@ func deploymentListCmd(g *GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			items, page, err := r.client.ListDeployments(cmd.Context(), q)
+			items, next, err := fetchPaged(q, *cursor, *all, func(q url.Values) ([]json.RawMessage, *int64, error) {
+				it, p, e := r.client.ListDeployments(cmd.Context(), q)
+				return it, p.Next, e
+			})
 			if err != nil {
 				return err
 			}
@@ -70,10 +75,11 @@ func deploymentListCmd(g *GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return emitList(g, rows, paginationMeta(page.Next))
+			return emitList(g, rows, paginationMeta(next))
 		},
 	}
 	f := cmd.Flags()
+	cursor, all = addPageFlags(cmd)
 	f.StringVar(&project, "project", "", "filter by project id or name")
 	f.StringVar(&state, "state", "", "filter by state: BUILDING,ERROR,INITIALIZING,QUEUED,READY,CANCELED")
 	f.StringVar(&target, "target", "", "filter by target environment (e.g. production)")
