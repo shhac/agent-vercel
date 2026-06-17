@@ -13,7 +13,7 @@ import (
 // global flag (precedence: explicit flag > config > built-in default).
 var configKeys = map[string]string{
 	"format":         "default output format: json|yaml|jsonl",
-	"max-body-chars": "default body/log truncation (-1 = unlimited)",
+	"max-body-chars": "default body/log truncation (0 = per-command default, -1 = unlimited)",
 	"timeout":        "default request timeout in milliseconds",
 }
 

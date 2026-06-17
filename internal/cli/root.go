@@ -113,7 +113,7 @@ func newRootCmd(version string) *cobra.Command {
 	pf.IntVarP(&g.TimeoutMS, "timeout", "t", 0, "request timeout in milliseconds (0 = client default)")
 	pf.BoolVarP(&g.Debug, "debug", "d", false, "log redacted HTTP records to stderr")
 	pf.BoolVar(&g.Full, "full", false, "return raw Vercel API payloads instead of compact projections")
-	pf.IntVar(&g.MaxBodyChars, "max-body-chars", 0, "truncate long body/log fields (0 = per-command default)")
+	pf.IntVar(&g.MaxBodyChars, "max-body-chars", 0, "truncate long body/log fields (0 = per-command default, -1 = unlimited)")
 	pf.StringVar(&g.BaseURL, "base-url", "", "override the API base URL (testing)")
 	_ = pf.MarkHidden("base-url")
 

@@ -56,7 +56,7 @@ agent-vercel scope set-default acme       # default scope
 agent-vercel usage                       # LLM-oriented overview
 ```
 
-## Command surface (proposed)
+## Command surface
 
 | Domain | Commands |
 |---|---|
@@ -64,7 +64,7 @@ agent-vercel usage                       # LLM-oriented overview
 | `scope` | `list` (`ls`), `current`, `set-default` |
 | `deployment` | `list`, `get`, `current`, `logs`, `runtime-logs`, `promote`*, `rollback`*, `cancel`*, `redeploy`* |
 | `project` | `list`, `get` |
-| `env` | `list`, `diff`, `get`, `set`*, `rm`* |
+| `env` | `list`, `diff`, `get`, `set`*, `rm`*, `pull` |
 | `domain` | `list`, `get`, `inspect`, `records`, `verify`*, `add`*, `rm`*, `cert` |
 | `alias` | `list`, `set`*, `rm`*, `bypass`* |
 | `billing` | `charges` (`--by service\|project`) |
