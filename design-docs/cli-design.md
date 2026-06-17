@@ -96,7 +96,7 @@ domain is a possible later addition.
 | `domain list` | `--limit` | | account domains; `GET /v5/domains` |
 | `domain get <domain>` | | | verification challenges, redirect, verified state |
 | `domain inspect <domain>` | | | config check: intended vs actual nameservers, misconfig reasons |
-| `domain records <domain>` | `--limit` | | DNS records; `GET /v5/domains/{d}/records` |
+| `domain records list/add/rm <domain> …` | `--ttl` (add) | `--yes` (add/rm) | list (`GET /v5/domains/{d}/records`), add (`POST /v2/...`), rm (`DELETE`) — closes the inspect→fix loop |
 | `domain verify <domain> --project <p>` | | `--yes` | `POST /v9/projects/{id}/domains/{d}/verify` |
 | `domain add <project> <domain>` | `--redirect`, `--git-branch` | `--yes` | |
 | `domain rm <project> <domain>` | | `--yes` | |

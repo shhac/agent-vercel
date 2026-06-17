@@ -80,7 +80,9 @@ distinct from the agent-vercel access token (never readable).
 | `domain list` | `--limit` |
 | `domain get <domain>` | verification challenges, verified state |
 | `domain inspect <domain>` | nameserver / config check, misconfig reasons |
-| `domain records <domain>` | DNS records |
+| `domain records list <domain>` | list DNS records |
+| `domain records add <domain> <type> <name> <value>` * | `--ttl`; add a DNS record |
+| `domain records rm <domain> <record-id>` * | remove a DNS record |
 | `domain verify <domain> --project <p>` * | |
 | `domain add <project> <domain>` * | `--redirect --git-branch` |
 | `domain rm <project> <domain>` * | |

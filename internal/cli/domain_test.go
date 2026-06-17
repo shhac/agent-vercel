@@ -50,13 +50,41 @@ func TestDomainRecords(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New())
 	defer srv.Close()
 
-	out, _, err := execCLI(t, srv.URL, "domain", "records", "example.com")
+	out, _, err := execCLI(t, srv.URL, "domain", "records", "list", "example.com")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
 	rows := ndjsonLines(t, out)
 	if len(rows) != 2 || rows[0]["type"] != "A" {
 		t.Fatalf("records = %s", out)
+	}
+}
+
+func TestDomainRecordsAddRm(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	// gated without --yes
+	if _, errOut, err := execCLI(t, srv.URL, "domain", "records", "add", "example.com", "A", "@", "1.2.3.4"); err == nil {
+		t.Fatal("records add should be gated")
+	} else if m := decodeJSON(t, errOut); m["fixable_by"] != "human" {
+		t.Fatalf("gate = %v", m)
+	}
+
+	out, _, err := execCLI(t, srv.URL, "domain", "records", "add", "example.com", "A", "@", "1.2.3.4", "--yes")
+	if err != nil {
+		t.Fatalf("add: %v", err)
+	}
+	if m := decodeJSON(t, out); m["uid"] != "rec_new" || m["type"] != "A" {
+		t.Fatalf("records add = %v", m)
+	}
+
+	out, _, err = execCLI(t, srv.URL, "domain", "records", "rm", "example.com", "rec_1", "--yes")
+	if err != nil {
+		t.Fatalf("rm: %v", err)
+	}
+	if m := decodeJSON(t, out); m["removed"] != "rec_1" {
+		t.Fatalf("records rm = %v", m)
 	}
 }
 

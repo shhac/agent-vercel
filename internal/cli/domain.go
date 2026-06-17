@@ -99,33 +99,6 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 		},
 	}
 
-	var recCursor *string
-	var recAll *bool
-	records := &cobra.Command{
-		Use:   "records <domain>",
-		Short: "List DNS records for a domain",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			r, err := resolveClient(g)
-			if err != nil {
-				return err
-			}
-			items, next, err := fetchPaged(url.Values{}, *recCursor, *recAll, func(q url.Values) ([]json.RawMessage, *int64, error) {
-				it, p, e := r.client.DomainRecords(cmd.Context(), args[0], q)
-				return it, p.Next, e
-			})
-			if err != nil {
-				return err
-			}
-			rows, err := compactRows(items, g.Full, compactRecord)
-			if err != nil {
-				return err
-			}
-			return emitList(g, rows, paginationMeta(next))
-		},
-	}
-	recCursor, recAll = addPageFlags(records)
-
 	cert := &cobra.Command{
 		Use:   "cert <id>",
 		Short: "Get a certificate (expiry, autoRenew, covered names)",
@@ -143,8 +116,102 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 		},
 	}
 
-	cmd.AddCommand(list, get, inspect, records, cert, domainAddCmd(g), domainRmCmd(g), domainVerifyCmd(g))
+	cmd.AddCommand(list, get, inspect, domainRecordsCmd(g), cert, domainAddCmd(g), domainRmCmd(g), domainVerifyCmd(g))
 	root.AddCommand(cmd)
+}
+
+// domainRecordsCmd is the `domain records` group: list/add/rm DNS records.
+// It's a group (not a leaf) to keep DNS-record add/rm distinct from the
+// project-domain `domain add`/`rm`.
+func domainRecordsCmd(g *GlobalFlags) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "records",
+		Short: "List, add, or remove a domain's DNS records",
+		RunE:  func(c *cobra.Command, args []string) error { return handleUnknownSubcommand(c, args) },
+	}
+
+	var cursor *string
+	var all *bool
+	list := &cobra.Command{
+		Use:   "list <domain>",
+		Short: "List DNS records for a domain",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			items, next, err := fetchPaged(url.Values{}, *cursor, *all, func(q url.Values) ([]json.RawMessage, *int64, error) {
+				it, p, e := r.client.DomainRecords(cmd.Context(), args[0], q)
+				return it, p.Next, e
+			})
+			if err != nil {
+				return err
+			}
+			rows, err := compactRows(items, g.Full, compactRecord)
+			if err != nil {
+				return err
+			}
+			return emitList(g, rows, paginationMeta(next))
+		},
+	}
+	cursor, all = addPageFlags(list)
+
+	var ttl int
+	var yes *bool
+	add := &cobra.Command{
+		Use:   "add <domain> <type> <name> <value>",
+		Short: "Add a DNS record (type e.g. A, AAAA, CNAME, TXT, MX)",
+		Args:  cobra.ExactArgs(4),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			domain, recType, name, value := args[0], args[1], args[2], args[3]
+			if err := requireYes(*yes, "add "+recType+" record on "+domain,
+				"agent-vercel domain records add "+domain+" "+recType+" "+name+" <value> --yes"); err != nil {
+				return err
+			}
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			body := map[string]any{"type": recType, "name": name, "value": value}
+			if ttl > 0 {
+				body["ttl"] = ttl
+			}
+			raw, err := r.client.CreateDNSRecord(cmd.Context(), domain, body)
+			if err != nil {
+				return err
+			}
+			return printRaw(g, raw)
+		},
+	}
+	add.Flags().IntVar(&ttl, "ttl", 0, "record TTL in seconds (omit for Vercel default)")
+	yes = addYesFlag(add)
+
+	var rmYes *bool
+	rm := &cobra.Command{
+		Use:   "rm <domain> <record-id>",
+		Short: "Remove a DNS record by id",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			domain, recID := args[0], args[1]
+			if err := requireYes(*rmYes, "remove DNS record "+recID+" from "+domain,
+				"agent-vercel domain records rm "+domain+" "+recID+" --yes"); err != nil {
+				return err
+			}
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			if _, err := r.client.DeleteDNSRecord(cmd.Context(), domain, recID); err != nil {
+				return err
+			}
+			return printSingle(g, map[string]any{"removed": recID, "domain": domain})
+		},
+	}
+	rmYes = addYesFlag(rm)
+
+	cmd.AddCommand(list, add, rm)
+	return cmd
 }
 
 func domainAddCmd(g *GlobalFlags) *cobra.Command {

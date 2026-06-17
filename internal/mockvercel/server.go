@@ -349,6 +349,14 @@ func New(opts ...Option) http.Handler {
 	mux.HandleFunc("POST /v9/projects/{idOrName}/domains/{domain}/verify", requireBearer(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"name": r.PathValue("domain"), "verified": true})
 	}))
+	mux.HandleFunc("POST /v2/domains/{domain}/records", requireBearer(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		writeJSON(w, http.StatusOK, map[string]any{"uid": "rec_new", "type": body["type"], "name": body["name"]})
+	}))
+	mux.HandleFunc("DELETE /v2/domains/{domain}/records/{recordId}", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{})
+	}))
 	mux.HandleFunc("POST /v2/deployments/{id}/aliases", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"uid": "alias_new", "alias": "app.example.com"})
 	}))

@@ -68,6 +68,16 @@ func (c *Client) DeleteAlias(ctx context.Context, aliasID string) (json.RawMessa
 	return c.Do(ctx, http.MethodDelete, "/v2/aliases/"+url.PathEscape(aliasID), nil, nil)
 }
 
+// CreateDNSRecord — POST /v2/domains/{domain}/records.
+func (c *Client) CreateDNSRecord(ctx context.Context, domain string, body any) (json.RawMessage, error) {
+	return c.Do(ctx, http.MethodPost, "/v2/domains/"+url.PathEscape(domain)+"/records", nil, body)
+}
+
+// DeleteDNSRecord — DELETE /v2/domains/{domain}/records/{recordId}.
+func (c *Client) DeleteDNSRecord(ctx context.Context, domain, recordID string) (json.RawMessage, error) {
+	return c.Do(ctx, http.MethodDelete, "/v2/domains/"+url.PathEscape(domain)+"/records/"+url.PathEscape(recordID), nil, nil)
+}
+
 // SetAliasProtectionBypass — PATCH /aliases/{id}/protection-bypass. Creates a
 // shareable bypass link for a deployment-protected alias (optionally with a TTL)
 // or revokes an existing one. The returned bypass secret is the share link the
