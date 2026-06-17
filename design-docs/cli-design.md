@@ -101,7 +101,7 @@ domain is a possible later addition.
 | `domain add <project> <domain>` | `--redirect`, `--git-branch` | `--yes` | |
 | `domain rm <project> <domain>` | | `--yes` | |
 | `domain cert <id>` | | | `GET /v8/certs/{id}` (expiry, autoRenew, cns) |
-| `alias list <deployment>` | | | `GET /v2/deployments/{id}/aliases`; surfaces `protectionBypass` |
+| `alias list [deployment]` | `--domain`, `--project`, `--cursor`, `--all` | | deployment's aliases (`GET /v2/deployments/{id}/aliases`) or scope-wide (`GET /v4/aliases`, filter by domain/project) — "what deployment serves this domain?"; surfaces `protection_bypass`, `deployment_id`, `project_id` |
 | `alias set <deployment> <alias>` | | `--yes` | `POST /v2/deployments/{id}/aliases` |
 | `alias rm <alias>` | | `--yes` | |
 | `alias bypass <alias\|id>` | `--ttl`, `--revoke`, `--regenerate` | `--yes` | `PATCH /aliases/{id}/protection-bypass`; mint/revoke a shareable link to a 401-ing preview |

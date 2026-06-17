@@ -16,19 +16,36 @@ func registerAlias(root *cobra.Command, g *GlobalFlags) {
 
 	var listCursor *string
 	var listAll *bool
+	var domain, project string
 	list := &cobra.Command{
-		Use:   "list <deployment>",
-		Short: "List the aliases assigned to a deployment",
-		Args:  cobra.ExactArgs(1),
+		Use:   "list [deployment]",
+		Short: "List aliases — for a deployment, or scope-wide (filter by --domain/--project)",
+		Long: "With a deployment argument, lists that deployment's aliases. Without one,\n" +
+			"lists aliases across the scope (GET /v4/aliases) — use --domain to answer\n" +
+			"\"what deployment serves this domain?\" or --project to list a project's aliases.",
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			r, err := resolveClient(g)
 			if err != nil {
 				return err
 			}
-			items, next, err := fetchPaged(url.Values{}, *listCursor, *listAll, func(q url.Values) ([]json.RawMessage, *int64, error) {
-				it, p, e := r.client.DeploymentAliases(cmd.Context(), args[0], q)
-				return it, p.Next, e
-			})
+			q := url.Values{}
+			var fetch pageFunc
+			if len(args) == 1 {
+				dep := cleanRef(args[0])
+				fetch = func(q url.Values) ([]json.RawMessage, *int64, error) {
+					it, p, e := r.client.DeploymentAliases(cmd.Context(), dep, q)
+					return it, p.Next, e
+				}
+			} else {
+				setIf(q, "domain", domain)
+				setIf(q, "projectId", project)
+				fetch = func(q url.Values) ([]json.RawMessage, *int64, error) {
+					it, p, e := r.client.ListAliases(cmd.Context(), q)
+					return it, p.Next, e
+				}
+			}
+			items, next, err := fetchPaged(q, *listCursor, *listAll, fetch)
 			if err != nil {
 				return err
 			}
@@ -39,6 +56,8 @@ func registerAlias(root *cobra.Command, g *GlobalFlags) {
 			return emitList(g, rows, paginationMeta(next))
 		},
 	}
+	list.Flags().StringVar(&domain, "domain", "", "scope-wide: filter aliases to this domain")
+	list.Flags().StringVar(&project, "project", "", "scope-wide: filter aliases to this project id")
 	listCursor, listAll = addPageFlags(list)
 
 	cmd.AddCommand(list, aliasSetCmd(g), aliasRmCmd(g), aliasBypassCmd(g))
@@ -148,6 +167,8 @@ func compactAlias(raw json.RawMessage) (map[string]any, error) {
 		Alias            string          `json:"alias"`
 		Created          string          `json:"created"`
 		Redirect         string          `json:"redirect"`
+		DeploymentID     string          `json:"deploymentId"`
+		ProjectID        string          `json:"projectId"`
 		ProtectionBypass json.RawMessage `json:"protectionBypass"`
 	}
 	if err := json.Unmarshal(raw, &a); err != nil {
@@ -156,6 +177,8 @@ func compactAlias(raw json.RawMessage) (map[string]any, error) {
 	m := map[string]any{"id": a.UID, "alias": a.Alias}
 	putIf(m, "created", a.Created)
 	putIf(m, "redirect", a.Redirect)
+	putIf(m, "deployment_id", a.DeploymentID)
+	putIf(m, "project_id", a.ProjectID)
 	if len(a.ProtectionBypass) > 0 && string(a.ProtectionBypass) != "null" {
 		m["protection_bypass"] = json.RawMessage(a.ProtectionBypass)
 	}

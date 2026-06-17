@@ -90,7 +90,7 @@ distinct from the agent-vercel access token (never readable).
 
 | Command | Key flags |
 |---|---|
-| `alias list <deployment>` | surfaces `protectionBypass` (why a preview 401s) |
+| `alias list [deployment]` | a deployment's aliases, or scope-wide with `--domain`/`--project` ("what serves this domain?"); surfaces `protection_bypass`, `deployment_id`, `project_id` |
 | `alias set <deployment> <alias>` * | repoint |
 | `alias rm <alias>` * | |
 | `alias bypass <alias\|id>` * | `--ttl`, `--revoke <secret>`, `--regenerate` — mint/revoke a shareable bypass link for a gated preview |

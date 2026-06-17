@@ -132,3 +132,33 @@ func TestAliasBypassGated(t *testing.T) {
 		t.Fatalf("bypass should be gated: %v", m)
 	}
 }
+
+func TestAliasListScopeWideByDomain(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	out, _, err := execCLI(t, srv.URL, "alias", "list", "--domain", "example.com")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	rows := ndjsonLines(t, out)
+	if len(rows) != 1 || rows[0]["id"] != "alias_1" {
+		t.Fatalf("scope-wide alias by domain = %s", out)
+	}
+	if rows[0]["deployment_id"] != "dpl_ready" || rows[0]["project_id"] != "prj_web" {
+		t.Fatalf("alias should surface deployment_id/project_id: %v", rows[0])
+	}
+}
+
+func TestAliasListScopeWideByProject(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	out, _, err := execCLI(t, srv.URL, "alias", "list", "--project", "prj_web")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if rows := ndjsonLines(t, out); len(rows) != 2 {
+		t.Fatalf("want 2 aliases for prj_web, got %d: %s", len(rows), out)
+	}
+}
