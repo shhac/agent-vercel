@@ -60,6 +60,7 @@ There is no command that prints the secret. That is intentional.
 | `project list` | `--limit --search` |
 | `project get <id\|name>` | settings, framework, latest prod deployment |
 | `project crons <id\|name>` | cron jobs the project runs (path + schedule) and whether crons are enabled |
+| `project custom-environments <id\|name>` (`custom-envs`) | the project's custom deployment environments — slug, type, branch binding, domains; discovery counterpart to `--custom-env` |
 
 ## env
 

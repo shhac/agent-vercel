@@ -89,6 +89,7 @@ domain is a possible later addition.
 | `project list` | `--limit`, `--search` | | NDJSON, compact |
 | `project get <id\|name>` | | | settings, framework, latest prod deployment |
 | `project crons <id\|name>` | | | cron jobs the project runs (path + schedule) and whether crons are enabled; `GET /v1/projects/{id}/crons`. Spec-validated, not live-validated — projection shape may need adjusting against live data |
+| `project custom-environments <id\|name>` (`custom-envs`) | | | NDJSON; the project's custom deployment environments — slug, type, branch binding, domains; `GET /v9/projects/{id}/custom-environments`. The discovery counterpart to the `--custom-env` filters on `deployment`/`env` |
 | `env list <project>` | `--environment`, `--git-branch`, `--decrypt`, `--custom-env` | | NDJSON; `GET /v10/projects/{id}/env` |
 | `env diff <project>` | `--environments a,b` (default production,preview) | | the killer feature: which keys differ / are missing per env |
 | `env get <project> <key>` | `--environment`, `--decrypt` | | |

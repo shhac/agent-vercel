@@ -63,7 +63,7 @@ agent-vercel usage                       # LLM-oriented overview
 | `auth` | `add`, `list` (`ls`), `test`, `set-default`, `remove`, `import-cli` |
 | `scope` | `list` (`ls`), `current`, `set-default` |
 | `deployment` | `list`, `get`, `checks`, `current`, `logs`, `runtime-logs`, `promote`*, `rollback`*, `cancel`*, `redeploy`* |
-| `project` | `list`, `get`, `crons` |
+| `project` | `list`, `get`, `crons`, `custom-environments` |
 | `env` | `list`, `diff`, `get`, `set`*, `rm`*, `pull` |
 | `domain` | `list`, `get`, `inspect`, `records`, `verify`*, `add`*, `rm`*, `cert` |
 | `alias` | `list`, `set`*, `rm`*, `bypass`* |

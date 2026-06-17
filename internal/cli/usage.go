@@ -33,7 +33,7 @@ SETUP (once)
 
 CORE DOMAINS (see design-docs/cli-design.md)
   deployment   list | get | checks | logs | runtime-logs | current | promote* | rollback* | cancel* | redeploy*
-  project      list | get | crons
+  project      list | get | crons | custom-environments
   env          list | diff | get | pull | set* | rm*
   domain       list | get | inspect | records | cert | verify* | add* | rm*
   alias        list | set* | rm* | bypass*

@@ -93,8 +93,71 @@ func registerProject(root *cobra.Command, g *GlobalFlags) {
 		},
 	}
 
-	cmd.AddCommand(list, get, crons)
+	customEnvs := &cobra.Command{
+		Use:     "custom-environments <id|name>",
+		Aliases: []string{"custom-envs"},
+		Short:   "List a project's custom deployment environments (slug, branch binding, domains)",
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			items, err := r.client.ProjectCustomEnvironments(cmd.Context(), args[0])
+			if err != nil {
+				return err
+			}
+			rows, err := compactRows(items, g.Full, compactCustomEnv)
+			if err != nil {
+				return err
+			}
+			return emitList(g, rows, nil)
+		},
+	}
+
+	cmd.AddCommand(list, get, crons, customEnvs)
 	root.AddCommand(cmd)
+}
+
+type rawCustomEnv struct {
+	ID            string `json:"id"`
+	Slug          string `json:"slug"`
+	Type          string `json:"type"`
+	Description   string `json:"description"`
+	BranchMatcher struct {
+		Type    string `json:"type"`
+		Pattern string `json:"pattern"`
+	} `json:"branchMatcher"`
+	Domains []struct {
+		Name string `json:"name"`
+	} `json:"domains"`
+	CreatedAt int64 `json:"createdAt"`
+	UpdatedAt int64 `json:"updatedAt"`
+}
+
+// compactCustomEnv projects a custom environment: its slug and type, the git
+// branch binding (as "matcherType:pattern", e.g. "startsWith:release/"), and
+// any attached domains.
+func compactCustomEnv(raw json.RawMessage) (map[string]any, error) {
+	var e rawCustomEnv
+	if err := json.Unmarshal(raw, &e); err != nil {
+		return nil, wrapAgent(err)
+	}
+	m := map[string]any{"id": e.ID, "slug": e.Slug, "type": e.Type}
+	putIf(m, "description", e.Description)
+	if e.BranchMatcher.Type != "" {
+		m["branch_matcher"] = e.BranchMatcher.Type + ":" + e.BranchMatcher.Pattern
+	}
+	if len(e.Domains) > 0 {
+		names := make([]any, 0, len(e.Domains))
+		for _, d := range e.Domains {
+			names = append(names, d.Name)
+		}
+		m["domains"] = names
+	}
+	putIf(m, "created", msToRFC3339(e.CreatedAt))
+	putIf(m, "updated", msToRFC3339(e.UpdatedAt))
+	return m, nil
 }
 
 type rawCrons struct {

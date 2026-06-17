@@ -29,22 +29,23 @@ type Team struct {
 
 // Options configures the fixtures served by the handler.
 type Options struct {
-	User             User
-	Teams            []Team
-	Deployments      []map[string]any
-	Projects         []map[string]any
-	RollingRelease   map[string]any
-	ProjectCrons     map[string]any
-	DeploymentChecks []map[string]any
-	BuildEvents      []map[string]any
-	RuntimeLogs      []map[string]any
-	Env              []map[string]any
-	Domains          []map[string]any
-	DomainConfig     map[string]any
-	DomainRecords    []map[string]any
-	Certs            map[string]map[string]any
-	Aliases          []map[string]any
-	Charges          []map[string]any
+	User               User
+	Teams              []Team
+	Deployments        []map[string]any
+	Projects           []map[string]any
+	RollingRelease     map[string]any
+	ProjectCrons       map[string]any
+	CustomEnvironments []map[string]any
+	DeploymentChecks   []map[string]any
+	BuildEvents        []map[string]any
+	RuntimeLogs        []map[string]any
+	Env                []map[string]any
+	Domains            []map[string]any
+	DomainConfig       map[string]any
+	DomainRecords      []map[string]any
+	Certs              map[string]map[string]any
+	Aliases            []map[string]any
+	Charges            []map[string]any
 	// RuntimeLogsHang, when set, makes the runtime-logs handler hold the
 	// connection open after emitting its lines — simulating Vercel's
 	// open-ended stream so the client's bounded-window read can be tested.
@@ -67,6 +68,11 @@ func WithDeploymentChecks(c []map[string]any) Option {
 
 // WithProjectCrons overrides the fixture project crons payload.
 func WithProjectCrons(c map[string]any) Option { return func(o *Options) { o.ProjectCrons = c } }
+
+// WithCustomEnvironments overrides the fixture custom environments.
+func WithCustomEnvironments(e []map[string]any) Option {
+	return func(o *Options) { o.CustomEnvironments = e }
+}
 
 // WithRuntimeLogsHang makes the runtime-logs endpoint hold the connection open
 // after emitting its lines, simulating Vercel's open-ended log stream.
@@ -135,6 +141,20 @@ func defaults() *Options {
 					map[string]any{"host": "web-ready.vercel.app", "path": "/api/cron/sync", "schedule": "0 5 * * *"},
 					map[string]any{"host": "web-ready.vercel.app", "path": "/api/cron/digest", "schedule": "*/15 * * * *"},
 				},
+			},
+		},
+		CustomEnvironments: []map[string]any{
+			{
+				"id": "env_staging", "slug": "staging", "type": "preview",
+				"description":   "Staging environment",
+				"branchMatcher": map[string]any{"type": "startsWith", "pattern": "release/"},
+				"domains":       []any{map[string]any{"name": "staging.example.com"}},
+				"createdAt":     int64(1716100000000), "updatedAt": int64(1716206800000),
+			},
+			{
+				"id": "env_qa", "slug": "qa", "type": "preview",
+				"branchMatcher": map[string]any{"type": "equals", "pattern": "qa"},
+				"createdAt":     int64(1716050000000), "updatedAt": int64(1716060000000),
 			},
 		},
 		DeploymentChecks: []map[string]any{
@@ -260,6 +280,9 @@ func New(opts ...Option) http.Handler {
 	}))
 	mux.HandleFunc("GET /v1/projects/{idOrName}/crons", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, o.ProjectCrons)
+	}))
+	mux.HandleFunc("GET /v9/projects/{idOrName}/custom-environments", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{"environments": o.CustomEnvironments})
 	}))
 
 	mux.HandleFunc("GET /v3/deployments/{id}/events", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
