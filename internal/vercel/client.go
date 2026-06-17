@@ -5,6 +5,7 @@
 package vercel
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -247,4 +248,73 @@ func retryAfter(resp *http.Response) (time.Duration, bool) {
 		return time.Duration(secs) * time.Second, true
 	}
 	return 0, false
+}
+
+// StreamLines GETs a streaming (NDJSON) endpoint and collects whole-object lines
+// until the window elapses, maxLines is reached, or the server closes the
+// stream. Vercel exposes runtime logs as an open-ended stream with no bounding
+// query params, so a plain buffered read would block until the client timeout
+// and lose partial data; this bounds the read and keeps whatever arrived.
+func (c *Client) StreamLines(ctx context.Context, path string, query url.Values, window time.Duration, maxLines int) ([]json.RawMessage, error) {
+	u := *c.base
+	u.Path = strings.TrimRight(c.base.Path, "/") + "/" + strings.TrimLeft(path, "/")
+	u.RawQuery = c.withScope(query).Encode()
+
+	ctx, cancel := context.WithTimeout(ctx, window)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, agenterrors.Wrap(err, agenterrors.FixableByAgent)
+	}
+	req.Header.Set("Authorization", "Bearer "+c.cfg.Token)
+	req.Header.Set("User-Agent", c.cfg.UserAgent)
+	c.debugf("GET %s (stream, window=%s)", u.RequestURI(), window)
+
+	resp, err := c.http.Do(req)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, nil // window elapsed before any response: no logs
+		}
+		return nil, agenterrors.Wrap(err, agenterrors.FixableByRetry)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		_, apiErr := readResponse(resp) // closes body, maps status → fixable_by
+		return nil, apiErr
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	lines := make(chan json.RawMessage)
+	go func() {
+		defer close(lines)
+		sc := bufio.NewScanner(resp.Body)
+		sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
+		for sc.Scan() {
+			b := bytes.TrimSpace(sc.Bytes())
+			if len(b) == 0 || b[0] != '{' {
+				continue
+			}
+			cp := append(json.RawMessage(nil), b...)
+			select {
+			case lines <- cp:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	var out []json.RawMessage
+	for {
+		select {
+		case <-ctx.Done():
+			return out, nil // window elapsed: return what arrived
+		case line, ok := <-lines:
+			if !ok {
+				return out, nil // stream closed (EOF)
+			}
+			out = append(out, line)
+			if maxLines > 0 && len(out) >= maxLines {
+				return out, nil
+			}
+		}
+	}
 }

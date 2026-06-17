@@ -43,6 +43,10 @@ type Options struct {
 	Certs          map[string]map[string]any
 	Aliases        []map[string]any
 	Charges        []map[string]any
+	// RuntimeLogsHang, when set, makes the runtime-logs handler hold the
+	// connection open after emitting its lines — simulating Vercel's
+	// open-ended stream so the client's bounded-window read can be tested.
+	RuntimeLogsHang bool
 }
 
 // Option mutates Options.
@@ -50,6 +54,10 @@ type Option func(*Options)
 
 // WithEnv overrides the fixture environment variables.
 func WithEnv(env []map[string]any) Option { return func(o *Options) { o.Env = env } }
+
+// WithRuntimeLogsHang makes the runtime-logs endpoint hold the connection open
+// after emitting its lines, simulating Vercel's open-ended log stream.
+func WithRuntimeLogsHang() Option { return func(o *Options) { o.RuntimeLogsHang = true } }
 
 func defaults() *Options {
 	return &Options{
@@ -219,8 +227,22 @@ func New(opts ...Option) http.Handler {
 	mux.HandleFunc("GET /v3/deployments/{id}/events", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, o.BuildEvents)
 	}))
-	mux.HandleFunc("GET /v1/projects/{projectId}/deployments/{deploymentId}/runtime-logs", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusOK, o.RuntimeLogs)
+	mux.HandleFunc("GET /v1/projects/{projectId}/deployments/{deploymentId}/runtime-logs", requireBearer(func(w http.ResponseWriter, r *http.Request) {
+		// Vercel serves runtime logs as an open-ended NDJSON stream: emit the
+		// buffered lines, flushing each, then (in hang mode) hold the connection
+		// open until the client gives up — exercising the bounded-window read.
+		w.Header().Set("Content-Type", "application/x-ndjson")
+		flusher, _ := w.(http.Flusher)
+		for _, lg := range o.RuntimeLogs {
+			b, _ := json.Marshal(lg)
+			_, _ = w.Write(append(b, '\n'))
+			if flusher != nil {
+				flusher.Flush()
+			}
+		}
+		if o.RuntimeLogsHang {
+			<-r.Context().Done() // never close on our own; the client's window must
+		}
 	}))
 	mux.HandleFunc("GET /v10/projects/{idOrName}/env", requireBearer(func(w http.ResponseWriter, r *http.Request) {
 		decrypt := r.URL.Query().Get("decrypt") == "true"

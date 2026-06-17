@@ -43,7 +43,7 @@ There is no command that prints the secret. That is intentional.
 | `deployment get <id\|url>` | |
 | `deployment current <project>` | live prod deployment + rolling-release state |
 | `deployment logs <id\|url>` | `--status --since --until --limit --max-body-chars` (build logs) |
-| `deployment runtime-logs <id\|url>` | `--level --status --path` (runtime logs) |
+| `deployment runtime-logs <id\|url>` | `--level --status --path --limit`; a bounded live tail — collects logs for the `--timeout` window (default 6s) then returns |
 | `deployment promote <id>` * | repoint prod |
 | `deployment rollback <id>` * | |
 | `deployment cancel <id>` * | cancel in-progress build |

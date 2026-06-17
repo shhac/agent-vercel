@@ -3,6 +3,7 @@ package cli
 import (
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/shhac/agent-vercel/internal/mockvercel"
 )
@@ -167,5 +168,26 @@ func TestDeploymentListAllFollowsPages(t *testing.T) {
 	}
 	if _, ok := metaCursor(t, out); ok {
 		t.Fatalf("--all that exhausted pages should emit no cursor: %s", out)
+	}
+}
+
+func TestRuntimeLogsBoundedByOpenStream(t *testing.T) {
+	// Mock holds the runtime-logs connection open (like real Vercel); the
+	// client's --timeout window must bound the read and return what arrived,
+	// not hang.
+	srv := httptest.NewServer(mockvercel.New(mockvercel.WithRuntimeLogsHang()))
+	defer srv.Close()
+
+	start := time.Now()
+	out, _, err := execCLI(t, srv.URL, "deployment", "runtime-logs", "dpl_ready", "--timeout", "400")
+	elapsed := time.Since(start)
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if rows := ndjsonLines(t, out); len(rows) != 2 {
+		t.Fatalf("want 2 buffered logs from the stream, got %d: %s", len(rows), out)
+	}
+	if elapsed > 5*time.Second {
+		t.Fatalf("runtime-logs did not bound the open stream (took %s)", elapsed)
 	}
 }

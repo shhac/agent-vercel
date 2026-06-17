@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/url"
+	"time"
 )
 
 // DeploymentEvents — GET /v3/deployments/{idOrUrl}/events (build logs). The
@@ -18,13 +19,11 @@ func (c *Client) DeploymentEvents(ctx context.Context, idOrURL string, q url.Val
 }
 
 // RuntimeLogs — GET /v1/projects/{projectId}/deployments/{deploymentId}/runtime-logs.
-func (c *Client) RuntimeLogs(ctx context.Context, projectID, deploymentID string, q url.Values) ([]json.RawMessage, error) {
+// This is an open-ended NDJSON stream with no bounding query params, so it is
+// read via StreamLines: collect logs for window, up to maxLines, then return.
+func (c *Client) RuntimeLogs(ctx context.Context, projectID, deploymentID string, window time.Duration, maxLines int) ([]json.RawMessage, error) {
 	path := "/v1/projects/" + url.PathEscape(projectID) + "/deployments/" + url.PathEscape(deploymentID) + "/runtime-logs"
-	raw, err := c.Get(ctx, path, q)
-	if err != nil {
-		return nil, err
-	}
-	return decodeArrayOrStream(raw), nil
+	return c.StreamLines(ctx, path, url.Values{}, window, maxLines)
 }
 
 // ProjectEnv — GET /v10/projects/{idOrName}/env. Returns the env var objects

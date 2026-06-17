@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
 	"github.com/spf13/cobra"
@@ -61,10 +62,14 @@ func deploymentLogsCmd(g *GlobalFlags) *cobra.Command {
 
 func deploymentRuntimeLogsCmd(g *GlobalFlags) *cobra.Command {
 	var level, status, path string
+	var limit int
 	cmd := &cobra.Command{
 		Use:   "runtime-logs <id|url>",
-		Short: "Runtime (function) logs for a deployment",
-		Args:  cobra.ExactArgs(1),
+		Short: "Runtime (function) logs for a deployment (a bounded live tail)",
+		Long: "Vercel serves runtime logs as an open-ended stream, so this collects\n" +
+			"logs that arrive within a time window, then returns. The window is\n" +
+			"--timeout (default 6s); --limit caps how many lines are returned.",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			r, err := resolveClient(g)
 			if err != nil {
@@ -85,7 +90,11 @@ func deploymentRuntimeLogsCmd(g *GlobalFlags) *cobra.Command {
 			if projectID == "" || depID == "" {
 				return agenterrors.New("could not resolve project for deployment", agenterrors.FixableByAgent)
 			}
-			logs, err := r.client.RuntimeLogs(cmd.Context(), projectID, depID, url.Values{})
+			window := 6 * time.Second
+			if g.TimeoutMS > 0 {
+				window = time.Duration(g.TimeoutMS) * time.Millisecond
+			}
+			logs, err := r.client.RuntimeLogs(cmd.Context(), projectID, depID, window, limit)
 			if err != nil {
 				return err
 			}
@@ -109,6 +118,7 @@ func deploymentRuntimeLogsCmd(g *GlobalFlags) *cobra.Command {
 	f.StringVar(&level, "level", "", "filter by level (trace|debug|info|warning|error|fatal)")
 	f.StringVar(&status, "status", "", "filter by response status code or class (e.g. 500 or 5xx)")
 	f.StringVar(&path, "path", "", "filter by request path prefix")
+	f.IntVar(&limit, "limit", 200, "max log lines to collect")
 	return cmd
 }
 
