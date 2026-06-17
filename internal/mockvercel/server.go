@@ -152,8 +152,8 @@ func defaults() *Options {
 			"cert_1": {"id": "cert_1", "createdAt": int64(1716000000000), "expiresAt": int64(1763200000000), "autoRenew": true, "cns": []any{"example.com", "www.example.com"}},
 		},
 		Aliases: []map[string]any{
-			{"uid": "alias_1", "alias": "example.com", "created": "2026-05-01T10:00:00.000Z", "projectId": "prj_web", "deploymentId": "dpl_ready"},
-			{"uid": "alias_2", "alias": "web-ready.vercel.app", "created": "2026-05-01T10:00:00.000Z", "protectionBypass": map[string]any{"scope": "shareable-link"}, "projectId": "prj_web", "deploymentId": "dpl_ready"},
+			{"uid": "alias_1", "alias": "example.com", "created": "2026-05-01T10:00:00.000Z"},
+			{"uid": "alias_2", "alias": "web-ready.vercel.app", "created": "2026-05-01T10:00:00.000Z", "protectionBypass": map[string]any{"scope": "shareable-link"}},
 		},
 		Charges: []map[string]any{
 			{"ServiceName": "Functions", "ChargeCategory": "Usage", "BilledCost": 12.50, "BillingCurrency": "USD", "ConsumedQuantity": 1000000.0, "ConsumedUnit": "invocations", "ChargePeriodStart": "2026-06-01T00:00:00Z", "ChargePeriodEnd": "2026-06-02T00:00:00Z", "Tags": map[string]any{"ProjectName": "web", "ProjectId": "prj_web"}},
@@ -299,19 +299,6 @@ func New(opts ...Option) http.Handler {
 		writeJSON(w, http.StatusOK, map[string]any{
 			"aliases":    o.Aliases,
 			"pagination": map[string]any{"count": len(o.Aliases)},
-		})
-	}))
-	mux.HandleFunc("GET /v4/aliases", requireBearer(func(w http.ResponseWriter, r *http.Request) {
-		items := o.Aliases
-		if dom := r.URL.Query().Get("domain"); dom != "" {
-			items = filterMaps(items, "alias", dom)
-		}
-		if pid := r.URL.Query().Get("projectId"); pid != "" {
-			items = filterMaps(items, "projectId", pid)
-		}
-		writeJSON(w, http.StatusOK, map[string]any{
-			"aliases":    items,
-			"pagination": map[string]any{"count": len(items)},
 		})
 	}))
 

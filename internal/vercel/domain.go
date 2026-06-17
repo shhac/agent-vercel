@@ -40,11 +40,6 @@ func (c *Client) DeploymentAliases(ctx context.Context, idOrURL string, q url.Va
 	return c.listRaw(ctx, "/v2/deployments/"+url.PathEscape(idOrURL)+"/aliases", "aliases", q)
 }
 
-// ListAliases — GET /v4/aliases (scope-wide; filter via domain/projectId in q).
-func (c *Client) ListAliases(ctx context.Context, q url.Values) ([]json.RawMessage, Page, error) {
-	return c.listRaw(ctx, "/v4/aliases", "aliases", q)
-}
-
 // unwrap returns the sub-object under key, or the raw payload if absent.
 func unwrap(raw json.RawMessage, key string) json.RawMessage {
 	var env map[string]json.RawMessage
