@@ -191,3 +191,35 @@ func TestRuntimeLogsBoundedByOpenStream(t *testing.T) {
 		t.Fatalf("runtime-logs did not bound the open stream (took %s)", elapsed)
 	}
 }
+
+func TestDeploymentCustomEnvFilter(t *testing.T) {
+	deps := []map[string]any{
+		{"uid": "dpl_stg", "name": "web", "projectId": "prj_web", "url": "web-stg.example.com",
+			"state": "READY", "readyState": "READY", "created": int64(2),
+			"customEnvironment": map[string]any{"id": "env_stg", "slug": "staging"}},
+		{"uid": "dpl_prod", "name": "web", "projectId": "prj_web", "url": "web-prod.example.com",
+			"state": "READY", "readyState": "READY", "target": "production", "created": int64(1)},
+	}
+	srv := httptest.NewServer(mockvercel.New(mockvercel.WithDeployments(deps)))
+	defer srv.Close()
+
+	out, _, err := execCLI(t, srv.URL, "deployment", "list", "--custom-env", "staging")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	rows := ndjsonLines(t, out)
+	if len(rows) != 1 || rows[0]["id"] != "dpl_stg" || rows[0]["custom_environment"] != "staging" {
+		t.Fatalf("custom-env filter = %s", out)
+	}
+
+	// deployment current --custom-env picks the newest READY in that env
+	out, _, err = execCLI(t, srv.URL, "deployment", "current", "web", "--custom-env", "staging")
+	if err != nil {
+		t.Fatalf("current err: %v", err)
+	}
+	m := decodeJSON(t, out)
+	live, ok := m["live"].(map[string]any)
+	if !ok || live["id"] != "dpl_stg" {
+		t.Fatalf("current --custom-env = %v", m)
+	}
+}

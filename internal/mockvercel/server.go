@@ -55,6 +55,9 @@ type Option func(*Options)
 // WithEnv overrides the fixture environment variables.
 func WithEnv(env []map[string]any) Option { return func(o *Options) { o.Env = env } }
 
+// WithDeployments overrides the fixture deployments.
+func WithDeployments(d []map[string]any) Option { return func(o *Options) { o.Deployments = d } }
+
 // WithRuntimeLogsHang makes the runtime-logs endpoint hold the connection open
 // after emitting its lines, simulating Vercel's open-ended log stream.
 func WithRuntimeLogsHang() Option { return func(o *Options) { o.RuntimeLogsHang = true } }

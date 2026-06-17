@@ -72,9 +72,9 @@ domain is a possible later addition.
 | `scope list` (`ls`) | | | `GET /v2/teams` (live; names/slugs are used directly, no resolution cache) |
 | `scope current` | | | active scope + default credential |
 | `scope set-default <slug>` | | | empty arg → personal account |
-| `deployment list` | `--project`, `--state`, `--target`, `--branch`, `--sha`, `--user`, `--since`, `--until`, `--limit`, `--app` | | NDJSON; org/scope-wide; `GET /v6/deployments` |
+| `deployment list` | `--project`, `--state`, `--target`, `--custom-env`, `--branch`, `--sha`, `--user`, `--since`, `--until`, `--limit`, `--cursor`, `--all` | | NDJSON; org/scope-wide; `GET /v6/deployments`. `--custom-env` filters client-side (the API has no custom-env param) |
 | `deployment get <id\|url>` | | | compact: state, target, creator, commit, urls, timings, `errorCode` |
-| `deployment current <project>` | | | live prod deployment + rolling-release state |
+| `deployment current <project>` | `--custom-env` | | live prod deployment + rolling-release state; `--custom-env` shows the newest READY deploy in a custom environment |
 | `deployment logs <id\|url>` | `--since`, `--until`, `--status`, `--limit`, `--max-body-chars` | | build events; `GET /v3/deployments/{id}/events` |
 | `deployment runtime-logs <id\|url>` | `--level`, `--status`, `--path`, `--max-body-chars` | | `GET /v1/projects/{id}/deployments/{id}/runtime-logs` |
 | `deployment promote <id>` | | `--yes` | repoint prod to this deployment |

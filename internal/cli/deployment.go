@@ -34,7 +34,7 @@ func registerDeployment(root *cobra.Command, g *GlobalFlags) {
 }
 
 func deploymentListCmd(g *GlobalFlags) *cobra.Command {
-	var project, state, target, branch, sha, user, since, until string
+	var project, state, target, branch, sha, user, since, until, customEnv string
 	var limit int
 	var cursor *string
 	var all *bool
@@ -71,6 +71,7 @@ func deploymentListCmd(g *GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			items = filterByCustomEnv(items, customEnv)
 			rows, err := compactRows(items, g.Full, compactDeployment)
 			if err != nil {
 				return err
@@ -81,6 +82,7 @@ func deploymentListCmd(g *GlobalFlags) *cobra.Command {
 	f := cmd.Flags()
 	cursor, all = addPageFlags(cmd)
 	f.StringVar(&project, "project", "", "filter by project id or name")
+	f.StringVar(&customEnv, "custom-env", "", "filter to a custom environment (slug or id); pair with --all to scan")
 	f.StringVar(&state, "state", "", "filter by state: BUILDING,ERROR,INITIALIZING,QUEUED,READY,CANCELED")
 	f.StringVar(&target, "target", "", "filter by target environment (e.g. production)")
 	f.StringVar(&branch, "branch", "", "filter by git branch")
@@ -112,15 +114,37 @@ func deploymentGetCmd(g *GlobalFlags) *cobra.Command {
 }
 
 func deploymentCurrentCmd(g *GlobalFlags) *cobra.Command {
-	return &cobra.Command{
+	var customEnv string
+	cmd := &cobra.Command{
 		Use:   "current <project>",
-		Short: "Show the deployment live in production, plus any rolling release",
+		Short: "Show the deployment live in production (or a custom env), plus any rolling release",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			r, err := resolveClient(g)
 			if err != nil {
 				return err
 			}
+			out := map[string]any{"project": args[0]}
+			if customEnv != "" {
+				// No target param for custom envs: pull recent READY deploys and
+				// pick the newest matching the custom environment.
+				q := url.Values{}
+				q.Set("projectId", args[0])
+				q.Set("state", "READY")
+				q.Set("limit", "30")
+				items, _, err := r.client.ListDeployments(cmd.Context(), q)
+				if err != nil {
+					return err
+				}
+				out["custom_environment"] = customEnv
+				if matches := filterByCustomEnv(items, customEnv); len(matches) > 0 {
+					if m, err := compactDeployment(matches[0]); err == nil {
+						out["live"] = m
+					}
+				}
+				return printSingle(g, out)
+			}
+
 			q := url.Values{}
 			q.Set("projectId", args[0])
 			q.Set("target", "production")
@@ -130,7 +154,6 @@ func deploymentCurrentCmd(g *GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			out := map[string]any{"project": args[0]}
 			if len(items) > 0 {
 				if m, err := compactDeployment(items[0]); err == nil {
 					out["live"] = m
@@ -149,6 +172,8 @@ func deploymentCurrentCmd(g *GlobalFlags) *cobra.Command {
 			return printSingle(g, out)
 		},
 	}
+	cmd.Flags().StringVar(&customEnv, "custom-env", "", "show the newest READY deploy in this custom environment (slug or id) instead of production")
+	return cmd
 }
 
 type rawDeployment struct {
@@ -170,7 +195,33 @@ type rawDeployment struct {
 		Username string `json:"username"`
 		Email    string `json:"email"`
 	} `json:"creator"`
-	Meta map[string]any `json:"meta"`
+	Meta              map[string]any `json:"meta"`
+	CustomEnvironment struct {
+		ID   string `json:"id"`
+		Slug string `json:"slug"`
+	} `json:"customEnvironment"`
+}
+
+// filterByCustomEnv keeps deployments whose customEnvironment id or slug matches
+// env. Vercel's /v6/deployments has no custom-environment query param, so this
+// filters client-side (pair with --all to scan beyond one page).
+func filterByCustomEnv(items []json.RawMessage, env string) []json.RawMessage {
+	if env == "" {
+		return items
+	}
+	out := make([]json.RawMessage, 0, len(items))
+	for _, raw := range items {
+		var d struct {
+			CustomEnvironment struct {
+				ID   string `json:"id"`
+				Slug string `json:"slug"`
+			} `json:"customEnvironment"`
+		}
+		if json.Unmarshal(raw, &d) == nil && (d.CustomEnvironment.Slug == env || d.CustomEnvironment.ID == env) {
+			out = append(out, raw)
+		}
+	}
+	return out
 }
 
 func compactDeployment(raw json.RawMessage) (map[string]any, error) {
@@ -188,6 +239,7 @@ func compactDeployment(raw json.RawMessage) (map[string]any, error) {
 	if d.Target != nil {
 		m["target"] = *d.Target
 	}
+	putIf(m, "custom_environment", d.CustomEnvironment.Slug)
 	putIf(m, "ready_substate", d.ReadySubstate)
 	putIf(m, "inspector_url", d.InspectorURL)
 	putIf(m, "error_code", d.ErrorCode)
