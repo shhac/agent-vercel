@@ -17,20 +17,18 @@ func authImportCLICmd(g *GlobalFlags) *cobra.Command {
 		Short: "Import an access token from the Vercel CLI (after 'vercel login')",
 		Args:  cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return run(func() error {
-				path, token, err := readVercelCLIToken()
-				if err != nil {
-					return err
-				}
-				store, err := newCredStore()
-				if err != nil {
-					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-				}
-				if err := store.Upsert(credential.Auth{Label: label, Type: credential.AuthToken, Secret: token}); err != nil {
-					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-				}
-				return printSingle(g, map[string]any{"label": label, "imported_from": path, "stored": true})
-			})
+			path, token, err := readVercelCLIToken()
+			if err != nil {
+				return err
+			}
+			store, err := newCredStore()
+			if err != nil {
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
+			}
+			if err := store.Upsert(credential.Auth{Label: label, Type: credential.AuthToken, Secret: token}); err != nil {
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
+			}
+			return printSingle(g, map[string]any{"label": label, "imported_from": path, "stored": true})
 		},
 	}
 	cmd.Flags().StringVar(&label, "label", "default", "label to store the imported credential under")

@@ -45,11 +45,8 @@ type Options struct {
 // Option mutates Options.
 type Option func(*Options)
 
-// WithUser overrides the fixture user.
-func WithUser(u User) Option { return func(o *Options) { o.User = u } }
-
-// WithTeams overrides the fixture team list.
-func WithTeams(t []Team) Option { return func(o *Options) { o.Teams = t } }
+// WithEnv overrides the fixture environment variables.
+func WithEnv(env []map[string]any) Option { return func(o *Options) { o.Env = env } }
 
 func defaults() *Options {
 	return &Options{
@@ -281,8 +278,15 @@ func New(opts ...Option) http.Handler {
 	mux.HandleFunc("POST /v13/deployments", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"id": "dpl_new", "url": "web-new.vercel.app", "readyState": "QUEUED"})
 	}))
-	mux.HandleFunc("POST /v10/projects/{idOrName}/env", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]any{"created": map[string]any{"id": "env_new", "key": "NEW"}})
+	mux.HandleFunc("POST /v10/projects/{idOrName}/env", requireBearer(func(w http.ResponseWriter, r *http.Request) {
+		// Echo the posted body so tests can assert the wire payload (target/type).
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if body == nil {
+			body = map[string]any{}
+		}
+		body["id"] = "env_new"
+		writeJSON(w, http.StatusOK, map[string]any{"created": body})
 	}))
 	mux.HandleFunc("DELETE /v9/projects/{idOrName}/env/{id}", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{})

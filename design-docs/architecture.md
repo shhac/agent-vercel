@@ -88,8 +88,8 @@ agent-vercel/
 ## Output & errors
 
 - `internal/output`: `Print` (JSON/YAML, null-pruned), `NDJSONWriter`
-  (`WriteItem` / `WriteMetaLine` for `@`-prefixed trailers), `WriteError`,
-  `WriteNotice`. HTML escaping is off so URLs/queries render literally.
+  (`WriteItem` / `WriteMetaLine` for `@`-prefixed trailers), and `WriteError`.
+  HTML escaping is off so URLs/queries render literally.
 - `internal/errors`: `APIError{Message, Hint, FixableBy, Cause}` with
   `New`/`Newf`/`Wrap`/`WithHint`. The client and command layers attach the right
   `fixable_by` and a command-naming hint.

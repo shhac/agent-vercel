@@ -77,7 +77,7 @@ func resolveToken(g *GlobalFlags, creds *credential.Credentials) (string, *crede
 		for i := range creds.Auths {
 			if creds.Auths[i].Label == g.Auth {
 				a := &creds.Auths[i]
-				if isPlaceholder(a.Secret) {
+				if credential.IsPlaceholder(a.Secret) {
 					return "", nil, missingSecretErr(a.Label)
 				}
 				return a.Secret, a, nil
@@ -93,7 +93,7 @@ func resolveToken(g *GlobalFlags, creds *credential.Credentials) (string, *crede
 		for i := range creds.Auths {
 			if creds.Auths[i].Label == creds.DefaultAuth {
 				a := &creds.Auths[i]
-				if isPlaceholder(a.Secret) {
+				if credential.IsPlaceholder(a.Secret) {
 					return "", nil, missingSecretErr(a.Label)
 				}
 				return a.Secret, a, nil
@@ -108,10 +108,6 @@ func missingSecretErr(label string) error {
 	return agenterrors.Newf(agenterrors.FixableByHuman, "credential %q has no secret in the Keychain", label).
 		WithHint("re-add it: set VERCEL_TOKEN then run 'agent-vercel auth add --label " + label + "'")
 }
-
-// isPlaceholder mirrors credential.isPlaceholder for the hydrated-but-empty case
-// (an unhydrated keychain placeholder means the backing entry is gone).
-func isPlaceholder(v string) bool { return v == "" || v == "__KEYCHAIN__" }
 
 func firstNonEmpty(vals ...string) string {
 	for _, v := range vals {

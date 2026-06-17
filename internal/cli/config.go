@@ -18,21 +18,19 @@ func registerConfig(root *cobra.Command, g *GlobalFlags) {
 		Short: "Read one setting",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			return run(func() error {
-				s, err := settings.New()
-				if err != nil {
-					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-				}
-				v, ok, err := s.Get(args[0])
-				if err != nil {
-					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-				}
-				if !ok {
-					return agenterrors.Newf(agenterrors.FixableByAgent, "no setting %q", args[0]).
-						WithHint("run 'agent-vercel config list' to see settings")
-				}
-				return printSingle(g, map[string]any{"key": args[0], "value": v})
-			})
+			s, err := settings.New()
+			if err != nil {
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
+			}
+			v, ok, err := s.Get(args[0])
+			if err != nil {
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
+			}
+			if !ok {
+				return agenterrors.Newf(agenterrors.FixableByAgent, "no setting %q", args[0]).
+					WithHint("run 'agent-vercel config list' to see settings")
+			}
+			return printSingle(g, map[string]any{"key": args[0], "value": v})
 		},
 	}
 
@@ -41,16 +39,14 @@ func registerConfig(root *cobra.Command, g *GlobalFlags) {
 		Short: "Set one setting",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(_ *cobra.Command, args []string) error {
-			return run(func() error {
-				s, err := settings.New()
-				if err != nil {
-					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-				}
-				if err := s.Set(args[0], args[1]); err != nil {
-					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-				}
-				return printSingle(g, map[string]any{"key": args[0], "value": args[1]})
-			})
+			s, err := settings.New()
+			if err != nil {
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
+			}
+			if err := s.Set(args[0], args[1]); err != nil {
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
+			}
+			return printSingle(g, map[string]any{"key": args[0], "value": args[1]})
 		},
 	}
 
@@ -59,21 +55,19 @@ func registerConfig(root *cobra.Command, g *GlobalFlags) {
 		Short: "List all settings",
 		Args:  cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return run(func() error {
-				s, err := settings.New()
-				if err != nil {
-					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-				}
-				m, err := s.Load()
-				if err != nil {
-					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-				}
-				out := make(map[string]any, len(m))
-				for k, v := range m {
-					out[k] = v
-				}
-				return printSingle(g, out)
-			})
+			s, err := settings.New()
+			if err != nil {
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
+			}
+			m, err := s.Load()
+			if err != nil {
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
+			}
+			out := make(map[string]any, len(m))
+			for k, v := range m {
+				out[k] = v
+			}
+			return printSingle(g, out)
 		},
 	}
 
@@ -82,16 +76,14 @@ func registerConfig(root *cobra.Command, g *GlobalFlags) {
 		Short: "Remove one setting",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			return run(func() error {
-				s, err := settings.New()
-				if err != nil {
-					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-				}
-				if err := s.Unset(args[0]); err != nil {
-					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-				}
-				return printSingle(g, map[string]any{"unset": args[0]})
-			})
+			s, err := settings.New()
+			if err != nil {
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
+			}
+			if err := s.Unset(args[0]); err != nil {
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
+			}
+			return printSingle(g, map[string]any{"unset": args[0]})
 		},
 	}
 

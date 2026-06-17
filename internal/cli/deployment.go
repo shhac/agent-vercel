@@ -41,38 +41,36 @@ func deploymentListCmd(g *GlobalFlags) *cobra.Command {
 		Short: "List deployments across the scope, filterable",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return run(func() error {
-				q := url.Values{}
-				setIf(q, "projectId", project)
-				setIf(q, "state", strings.ToUpper(state))
-				setIf(q, "target", target)
-				setIf(q, "branch", branch)
-				setIf(q, "sha", sha)
-				setIf(q, "users", user)
-				if limit > 0 {
-					q.Set("limit", strconv.Itoa(limit))
-				}
-				if err := setTimeFilter(q, "since", since); err != nil {
-					return err
-				}
-				if err := setTimeFilter(q, "until", until); err != nil {
-					return err
-				}
+			q := url.Values{}
+			setIf(q, "projectId", project)
+			setIf(q, "state", strings.ToUpper(state))
+			setIf(q, "target", target)
+			setIf(q, "branch", branch)
+			setIf(q, "sha", sha)
+			setIf(q, "users", user)
+			if limit > 0 {
+				q.Set("limit", strconv.Itoa(limit))
+			}
+			if err := setTimeFilter(q, "since", since); err != nil {
+				return err
+			}
+			if err := setTimeFilter(q, "until", until); err != nil {
+				return err
+			}
 
-				r, err := resolveClient(g)
-				if err != nil {
-					return err
-				}
-				items, page, err := r.client.ListDeployments(cmd.Context(), q)
-				if err != nil {
-					return err
-				}
-				rows, err := compactRows(items, g.Full, compactDeployment)
-				if err != nil {
-					return err
-				}
-				return emitList(g, rows, paginationMeta(page.Next))
-			})
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			items, page, err := r.client.ListDeployments(cmd.Context(), q)
+			if err != nil {
+				return err
+			}
+			rows, err := compactRows(items, g.Full, compactDeployment)
+			if err != nil {
+				return err
+			}
+			return emitList(g, rows, paginationMeta(page.Next))
 		},
 	}
 	f := cmd.Flags()
@@ -94,24 +92,15 @@ func deploymentGetCmd(g *GlobalFlags) *cobra.Command {
 		Short: "Get one deployment",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(func() error {
-				r, err := resolveClient(g)
-				if err != nil {
-					return err
-				}
-				raw, err := r.client.GetDeployment(cmd.Context(), args[0])
-				if err != nil {
-					return err
-				}
-				if g.Full {
-					return printRaw(g, raw)
-				}
-				m, err := compactDeployment(raw)
-				if err != nil {
-					return err
-				}
-				return printSingle(g, m)
-			})
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			raw, err := r.client.GetDeployment(cmd.Context(), args[0])
+			if err != nil {
+				return err
+			}
+			return getOne(g, raw, compactDeployment)
 		},
 	}
 }
@@ -122,38 +111,36 @@ func deploymentCurrentCmd(g *GlobalFlags) *cobra.Command {
 		Short: "Show the deployment live in production, plus any rolling release",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(func() error {
-				r, err := resolveClient(g)
-				if err != nil {
-					return err
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			q := url.Values{}
+			q.Set("projectId", args[0])
+			q.Set("target", "production")
+			q.Set("state", "READY")
+			q.Set("limit", "1")
+			items, _, err := r.client.ListDeployments(cmd.Context(), q)
+			if err != nil {
+				return err
+			}
+			out := map[string]any{"project": args[0]}
+			if len(items) > 0 {
+				if m, err := compactDeployment(items[0]); err == nil {
+					out["live"] = m
 				}
-				q := url.Values{}
-				q.Set("projectId", args[0])
-				q.Set("target", "production")
-				q.Set("state", "READY")
-				q.Set("limit", "1")
-				items, _, err := r.client.ListDeployments(cmd.Context(), q)
-				if err != nil {
-					return err
+			}
+			// Rolling-release state is best-effort: a project without one
+			// (or the feature disabled) shouldn't fail the command.
+			if rr, err := r.client.RollingRelease(cmd.Context(), args[0]); err == nil {
+				var env struct {
+					RollingRelease json.RawMessage `json:"rollingRelease"`
 				}
-				out := map[string]any{"project": args[0]}
-				if len(items) > 0 {
-					if m, err := compactDeployment(items[0]); err == nil {
-						out["live"] = m
-					}
+				if json.Unmarshal(rr, &env) == nil && len(env.RollingRelease) > 0 && string(env.RollingRelease) != "null" {
+					out["rolling_release"] = json.RawMessage(env.RollingRelease)
 				}
-				// Rolling-release state is best-effort: a project without one
-				// (or the feature disabled) shouldn't fail the command.
-				if rr, err := r.client.RollingRelease(cmd.Context(), args[0]); err == nil {
-					var env struct {
-						RollingRelease json.RawMessage `json:"rollingRelease"`
-					}
-					if json.Unmarshal(rr, &env) == nil && len(env.RollingRelease) > 0 && string(env.RollingRelease) != "null" {
-						out["rolling_release"] = json.RawMessage(env.RollingRelease)
-					}
-				}
-				return printSingle(g, out)
-			})
+			}
+			return printSingle(g, out)
 		},
 	}
 }

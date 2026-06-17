@@ -20,21 +20,19 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 		Short: "List domains in the scope",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return run(func() error {
-				r, err := resolveClient(g)
-				if err != nil {
-					return err
-				}
-				items, page, err := r.client.ListDomains(cmd.Context(), url.Values{})
-				if err != nil {
-					return err
-				}
-				rows, err := compactRows(items, g.Full, compactDomain)
-				if err != nil {
-					return err
-				}
-				return emitList(g, rows, paginationMeta(page.Next))
-			})
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			items, page, err := r.client.ListDomains(cmd.Context(), url.Values{})
+			if err != nil {
+				return err
+			}
+			rows, err := compactRows(items, g.Full, compactDomain)
+			if err != nil {
+				return err
+			}
+			return emitList(g, rows, paginationMeta(page.Next))
 		},
 	}
 
@@ -43,24 +41,15 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 		Short: "Get one domain (verification, nameservers, verified state)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(func() error {
-				r, err := resolveClient(g)
-				if err != nil {
-					return err
-				}
-				raw, err := r.client.GetDomain(cmd.Context(), args[0])
-				if err != nil {
-					return err
-				}
-				if g.Full {
-					return printRaw(g, raw)
-				}
-				m, err := compactDomain(raw)
-				if err != nil {
-					return err
-				}
-				return printSingle(g, m)
-			})
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			raw, err := r.client.GetDomain(cmd.Context(), args[0])
+			if err != nil {
+				return err
+			}
+			return getOne(g, raw, compactDomain)
 		},
 	}
 
@@ -69,40 +58,38 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 		Short: "Configuration check: intended vs actual nameservers, misconfiguration",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(func() error {
-				r, err := resolveClient(g)
-				if err != nil {
-					return err
-				}
-				cfg, err := r.client.DomainConfig(cmd.Context(), args[0])
-				if err != nil {
-					return err
-				}
-				if g.Full {
-					return printRaw(g, cfg)
-				}
-				out := map[string]any{"domain": args[0]}
-				var c struct {
-					Misconfigured bool `json:"misconfigured"`
-				}
-				_ = json.Unmarshal(cfg, &c)
-				out["misconfigured"] = c.Misconfigured
-				// The actionable bit — intended vs actual nameservers, verified —
-				// lives on the domain record; fold it in best-effort.
-				if raw, err := r.client.GetDomain(cmd.Context(), args[0]); err == nil {
-					var d rawDomain
-					if json.Unmarshal(raw, &d) == nil {
-						out["verified"] = d.Verified
-						if len(d.Nameservers) > 0 {
-							out["nameservers"] = d.Nameservers
-						}
-						if len(d.IntendedNameservers) > 0 {
-							out["intended_nameservers"] = d.IntendedNameservers
-						}
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			cfg, err := r.client.DomainConfig(cmd.Context(), args[0])
+			if err != nil {
+				return err
+			}
+			if g.Full {
+				return printRaw(g, cfg)
+			}
+			out := map[string]any{"domain": args[0]}
+			var c struct {
+				Misconfigured bool `json:"misconfigured"`
+			}
+			_ = json.Unmarshal(cfg, &c)
+			out["misconfigured"] = c.Misconfigured
+			// The actionable bit — intended vs actual nameservers, verified —
+			// lives on the domain record; fold it in best-effort.
+			if raw, err := r.client.GetDomain(cmd.Context(), args[0]); err == nil {
+				var d rawDomain
+				if json.Unmarshal(raw, &d) == nil {
+					out["verified"] = d.Verified
+					if len(d.Nameservers) > 0 {
+						out["nameservers"] = d.Nameservers
+					}
+					if len(d.IntendedNameservers) > 0 {
+						out["intended_nameservers"] = d.IntendedNameservers
 					}
 				}
-				return printSingle(g, out)
-			})
+			}
+			return printSingle(g, out)
 		},
 	}
 
@@ -111,21 +98,19 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 		Short: "List DNS records for a domain",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(func() error {
-				r, err := resolveClient(g)
-				if err != nil {
-					return err
-				}
-				items, page, err := r.client.DomainRecords(cmd.Context(), args[0], url.Values{})
-				if err != nil {
-					return err
-				}
-				rows, err := compactRows(items, g.Full, compactRecord)
-				if err != nil {
-					return err
-				}
-				return emitList(g, rows, paginationMeta(page.Next))
-			})
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			items, page, err := r.client.DomainRecords(cmd.Context(), args[0], url.Values{})
+			if err != nil {
+				return err
+			}
+			rows, err := compactRows(items, g.Full, compactRecord)
+			if err != nil {
+				return err
+			}
+			return emitList(g, rows, paginationMeta(page.Next))
 		},
 	}
 
@@ -134,24 +119,15 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 		Short: "Get a certificate (expiry, autoRenew, covered names)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(func() error {
-				r, err := resolveClient(g)
-				if err != nil {
-					return err
-				}
-				raw, err := r.client.GetCert(cmd.Context(), args[0])
-				if err != nil {
-					return err
-				}
-				if g.Full {
-					return printRaw(g, raw)
-				}
-				m, err := compactCert(raw)
-				if err != nil {
-					return err
-				}
-				return printSingle(g, m)
-			})
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			raw, err := r.client.GetCert(cmd.Context(), args[0])
+			if err != nil {
+				return err
+			}
+			return getOne(g, raw, compactCert)
 		},
 	}
 
@@ -161,99 +137,93 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 
 func domainAddCmd(g *GlobalFlags) *cobra.Command {
 	var redirect, gitBranch string
-	var yes bool
+	var yes *bool
 	cmd := &cobra.Command{
 		Use:   "add <project> <domain>",
 		Short: "Add a domain to a project",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(func() error {
-				project, domain := args[0], args[1]
-				if err := requireYes(yes, "add domain "+domain+" to "+project,
-					"agent-vercel domain add "+project+" "+domain+" --yes"); err != nil {
-					return err
-				}
-				r, err := resolveClient(g)
-				if err != nil {
-					return err
-				}
-				body := map[string]any{"name": domain}
-				putIf(body, "redirect", redirect)
-				putIf(body, "gitBranch", gitBranch)
-				raw, err := r.client.AddProjectDomain(cmd.Context(), project, body)
-				if err != nil {
-					return err
-				}
-				return printRaw(g, raw)
-			})
+			project, domain := args[0], args[1]
+			if err := requireYes(*yes, "add domain "+domain+" to "+project,
+				"agent-vercel domain add "+project+" "+domain+" --yes"); err != nil {
+				return err
+			}
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			body := map[string]any{"name": domain}
+			putIf(body, "redirect", redirect)
+			putIf(body, "gitBranch", gitBranch)
+			raw, err := r.client.AddProjectDomain(cmd.Context(), project, body)
+			if err != nil {
+				return err
+			}
+			return printRaw(g, raw)
 		},
 	}
 	cmd.Flags().StringVar(&redirect, "redirect", "", "redirect target domain")
 	cmd.Flags().StringVar(&gitBranch, "git-branch", "", "git branch to link the domain to")
-	cmd.Flags().BoolVar(&yes, "yes", false, "confirm this state-changing action")
+	yes = addYesFlag(cmd)
 	return cmd
 }
 
 func domainRmCmd(g *GlobalFlags) *cobra.Command {
-	var yes bool
+	var yes *bool
 	cmd := &cobra.Command{
 		Use:   "rm <project> <domain>",
 		Short: "Remove a domain from a project",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(func() error {
-				project, domain := args[0], args[1]
-				if err := requireYes(yes, "remove domain "+domain+" from "+project,
-					"agent-vercel domain rm "+project+" "+domain+" --yes"); err != nil {
-					return err
-				}
-				r, err := resolveClient(g)
-				if err != nil {
-					return err
-				}
-				if _, err := r.client.RemoveProjectDomain(cmd.Context(), project, domain); err != nil {
-					return err
-				}
-				return printSingle(g, map[string]any{"removed": domain, "project": project})
-			})
+			project, domain := args[0], args[1]
+			if err := requireYes(*yes, "remove domain "+domain+" from "+project,
+				"agent-vercel domain rm "+project+" "+domain+" --yes"); err != nil {
+				return err
+			}
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			if _, err := r.client.RemoveProjectDomain(cmd.Context(), project, domain); err != nil {
+				return err
+			}
+			return printSingle(g, map[string]any{"removed": domain, "project": project})
 		},
 	}
-	cmd.Flags().BoolVar(&yes, "yes", false, "confirm this state-changing action")
+	yes = addYesFlag(cmd)
 	return cmd
 }
 
 func domainVerifyCmd(g *GlobalFlags) *cobra.Command {
 	var project string
-	var yes bool
+	var yes *bool
 	cmd := &cobra.Command{
 		Use:   "verify <domain> --project <p>",
 		Short: "Trigger verification of a project domain",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(func() error {
-				domain := args[0]
-				if project == "" {
-					return agenterrors.New("--project is required", agenterrors.FixableByAgent).
-						WithHint("pass --project <id|name>")
-				}
-				if err := requireYes(yes, "verify domain "+domain+" on "+project,
-					"agent-vercel domain verify "+domain+" --project "+project+" --yes"); err != nil {
-					return err
-				}
-				r, err := resolveClient(g)
-				if err != nil {
-					return err
-				}
-				raw, err := r.client.VerifyProjectDomain(cmd.Context(), project, domain)
-				if err != nil {
-					return err
-				}
-				return printRaw(g, raw)
-			})
+			domain := args[0]
+			if project == "" {
+				return agenterrors.New("--project is required", agenterrors.FixableByAgent).
+					WithHint("pass --project <id|name>")
+			}
+			if err := requireYes(*yes, "verify domain "+domain+" on "+project,
+				"agent-vercel domain verify "+domain+" --project "+project+" --yes"); err != nil {
+				return err
+			}
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			raw, err := r.client.VerifyProjectDomain(cmd.Context(), project, domain)
+			if err != nil {
+				return err
+			}
+			return printRaw(g, raw)
 		},
 	}
 	cmd.Flags().StringVar(&project, "project", "", "project id or name (required)")
-	cmd.Flags().BoolVar(&yes, "yes", false, "confirm this state-changing action")
+	yes = addYesFlag(cmd)
 	return cmd
 }
 

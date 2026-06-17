@@ -23,26 +23,24 @@ func registerProject(root *cobra.Command, g *GlobalFlags) {
 		Short: "List projects in the scope",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return run(func() error {
-				q := url.Values{}
-				setIf(q, "search", search)
-				if limit > 0 {
-					q.Set("limit", strconv.Itoa(limit))
-				}
-				r, err := resolveClient(g)
-				if err != nil {
-					return err
-				}
-				items, page, err := r.client.ListProjects(cmd.Context(), q)
-				if err != nil {
-					return err
-				}
-				rows, err := compactRows(items, g.Full, compactProject)
-				if err != nil {
-					return err
-				}
-				return emitList(g, rows, paginationMeta(page.Next))
-			})
+			q := url.Values{}
+			setIf(q, "search", search)
+			if limit > 0 {
+				q.Set("limit", strconv.Itoa(limit))
+			}
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			items, page, err := r.client.ListProjects(cmd.Context(), q)
+			if err != nil {
+				return err
+			}
+			rows, err := compactRows(items, g.Full, compactProject)
+			if err != nil {
+				return err
+			}
+			return emitList(g, rows, paginationMeta(page.Next))
 		},
 	}
 	list.Flags().StringVar(&search, "search", "", "filter projects by name substring")
@@ -53,24 +51,15 @@ func registerProject(root *cobra.Command, g *GlobalFlags) {
 		Short: "Get one project",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(func() error {
-				r, err := resolveClient(g)
-				if err != nil {
-					return err
-				}
-				raw, err := r.client.GetProject(cmd.Context(), args[0])
-				if err != nil {
-					return err
-				}
-				if g.Full {
-					return printRaw(g, raw)
-				}
-				m, err := compactProject(raw)
-				if err != nil {
-					return err
-				}
-				return printSingle(g, m)
-			})
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			raw, err := r.client.GetProject(cmd.Context(), args[0])
+			if err != nil {
+				return err
+			}
+			return getOne(g, raw, compactProject)
 		},
 	}
 

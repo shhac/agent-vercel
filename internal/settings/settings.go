@@ -31,9 +31,6 @@ func New() (*Store, error) {
 	return &Store{path: filepath.Join(base, "agent-vercel", "config.json")}, nil
 }
 
-// NewWithPath builds a Store at an explicit path (tests).
-func NewWithPath(path string) *Store { return &Store{path: path} }
-
 // Path returns the config file path.
 func (s *Store) Path() string { return s.path }
 

@@ -22,96 +22,96 @@ func registerEnv(root *cobra.Command, g *GlobalFlags) {
 
 func envSetCmd(g *GlobalFlags) *cobra.Command {
 	var environments, gitBranch, varType string
-	var yes bool
+	var yes *bool
 	cmd := &cobra.Command{
 		Use:   "set <project> <key> <value>",
 		Short: "Create or update an environment variable",
 		Args:  cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(func() error {
-				project, key, value := args[0], args[1], args[2]
-				targetList := splitCSV(environments)
-				if err := requireYes(yes,
-					"set env "+key+" on "+project+" ("+environments+")",
-					"agent-vercel env set "+project+" "+key+" <value> --environment "+environments+" --yes"); err != nil {
-					return err
-				}
-				r, err := resolveClient(g)
-				if err != nil {
-					return err
-				}
-				body := map[string]any{"key": key, "value": value, "type": varType, "target": targetList}
-				if gitBranch != "" {
-					body["gitBranch"] = gitBranch
-				}
-				raw, err := r.client.CreateEnv(cmd.Context(), project, body)
-				if err != nil {
-					return err
-				}
-				if g.Full {
-					return printRaw(g, raw)
-				}
-				return printSingle(g, map[string]any{"set": key, "target": targetList})
-			})
+			project, key, value := args[0], args[1], args[2]
+			targetList := splitCSV(environments)
+			if len(targetList) == 0 {
+				return agenterrors.New("no environment specified", agenterrors.FixableByAgent).
+					WithHint("pass --environment production[,preview,development]")
+			}
+			if err := requireYes(*yes,
+				"set env "+key+" on "+project+" ("+strings.Join(targetList, ",")+")",
+				"agent-vercel env set "+project+" "+key+" <value> --environment "+strings.Join(targetList, ",")+" --yes"); err != nil {
+				return err
+			}
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			body := map[string]any{"key": key, "value": value, "type": varType, "target": targetList}
+			if gitBranch != "" {
+				body["gitBranch"] = gitBranch
+			}
+			raw, err := r.client.CreateEnv(cmd.Context(), project, body)
+			if err != nil {
+				return err
+			}
+			if g.Full {
+				return printRaw(g, raw)
+			}
+			return printSingle(g, map[string]any{"set": key, "target": targetList})
 		},
 	}
 	f := cmd.Flags()
 	f.StringVar(&environments, "environment", "production", "comma-separated environments (production,preview,development)")
 	f.StringVar(&gitBranch, "git-branch", "", "limit a preview var to a git branch")
 	f.StringVar(&varType, "type", "encrypted", "variable type: encrypted|plain|sensitive")
-	f.BoolVar(&yes, "yes", false, "confirm this state-changing action")
+	yes = addYesFlag(cmd)
 	return cmd
 }
 
 func envRmCmd(g *GlobalFlags) *cobra.Command {
 	var environment string
-	var yes bool
+	var yes *bool
 	cmd := &cobra.Command{
 		Use:   "rm <project> <key>",
 		Short: "Remove an environment variable",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(func() error {
-				project, key := args[0], args[1]
-				if err := requireYes(yes, "remove env "+key+" from "+project,
-					"agent-vercel env rm "+project+" "+key+" --yes"); err != nil {
-					return err
+			project, key := args[0], args[1]
+			if err := requireYes(*yes, "remove env "+key+" from "+project,
+				"agent-vercel env rm "+project+" "+key+" --yes"); err != nil {
+				return err
+			}
+			envs, err := fetchEnv(g, cmd, project, "", "", false)
+			if err != nil {
+				return err
+			}
+			var ids []string
+			for _, e := range envs {
+				if e.Key != key {
+					continue
 				}
-				envs, err := fetchEnv(g, cmd, project, "", "", false)
-				if err != nil {
-					return err
+				if environment != "" && !targets(e)[environment] {
+					continue
 				}
-				var ids []string
-				for _, e := range envs {
-					if e.Key != key {
-						continue
-					}
-					if environment != "" && !targets(e)[environment] {
-						continue
-					}
-					ids = append(ids, e.ID)
-				}
-				switch len(ids) {
-				case 0:
-					return agenterrors.Newf(agenterrors.FixableByAgent, "no env var %q in project %q", key, project).
-						WithHint("run 'agent-vercel env list " + project + "' to see keys")
-				case 1:
-				default:
-					return agenterrors.Newf(agenterrors.FixableByAgent, "%q matches %d env entries; narrow with --environment", key, len(ids))
-				}
-				r, err := resolveClient(g)
-				if err != nil {
-					return err
-				}
-				if _, err := r.client.DeleteEnv(cmd.Context(), project, ids[0]); err != nil {
-					return err
-				}
-				return printSingle(g, map[string]any{"removed": key, "id": ids[0]})
-			})
+				ids = append(ids, e.ID)
+			}
+			switch len(ids) {
+			case 0:
+				return agenterrors.Newf(agenterrors.FixableByAgent, "no env var %q in project %q", key, project).
+					WithHint("run 'agent-vercel env list " + project + "' to see keys")
+			case 1:
+			default:
+				return agenterrors.Newf(agenterrors.FixableByAgent, "%q matches %d env entries; narrow with --environment", key, len(ids))
+			}
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			if _, err := r.client.DeleteEnv(cmd.Context(), project, ids[0]); err != nil {
+				return err
+			}
+			return printSingle(g, map[string]any{"removed": key, "id": ids[0]})
 		},
 	}
 	cmd.Flags().StringVar(&environment, "environment", "", "limit to a single environment")
-	cmd.Flags().BoolVar(&yes, "yes", false, "confirm this state-changing action")
+	yes = addYesFlag(cmd)
 	return cmd
 }
 
@@ -191,20 +191,18 @@ func envListCmd(g *GlobalFlags) *cobra.Command {
 		Short: "List a project's environment variables",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(func() error {
-				envs, err := fetchEnv(g, cmd, args[0], gitBranch, customEnv, decrypt)
-				if err != nil {
-					return err
+			envs, err := fetchEnv(g, cmd, args[0], gitBranch, customEnv, decrypt)
+			if err != nil {
+				return err
+			}
+			rows := make([]any, 0, len(envs))
+			for _, e := range envs {
+				if environment != "" && !targets(e)[environment] {
+					continue
 				}
-				rows := make([]any, 0, len(envs))
-				for _, e := range envs {
-					if environment != "" && !targets(e)[environment] {
-						continue
-					}
-					rows = append(rows, compactEnv(e, decrypt))
-				}
-				return emitList(g, rows, nil)
-			})
+				rows = append(rows, compactEnv(e, decrypt))
+			}
+			return emitList(g, rows, nil)
 		},
 	}
 	f := cmd.Flags()
@@ -223,31 +221,29 @@ func envGetCmd(g *GlobalFlags) *cobra.Command {
 		Short: "Get one environment variable (across or within an environment)",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(func() error {
-				envs, err := fetchEnv(g, cmd, args[0], "", "", decrypt)
-				if err != nil {
-					return err
+			envs, err := fetchEnv(g, cmd, args[0], "", "", decrypt)
+			if err != nil {
+				return err
+			}
+			var matches []any
+			for _, e := range envs {
+				if e.Key != args[1] {
+					continue
 				}
-				var matches []any
-				for _, e := range envs {
-					if e.Key != args[1] {
-						continue
-					}
-					if environment != "" && !targets(e)[environment] {
-						continue
-					}
-					matches = append(matches, compactEnv(e, decrypt))
+				if environment != "" && !targets(e)[environment] {
+					continue
 				}
-				switch len(matches) {
-				case 0:
-					return agenterrors.Newf(agenterrors.FixableByAgent, "no env var %q in project %q", args[1], args[0]).
-						WithHint("run 'agent-vercel env list " + args[0] + "' to see keys")
-				case 1:
-					return printSingle(g, matches[0])
-				default:
-					return emitList(g, matches, nil)
-				}
-			})
+				matches = append(matches, compactEnv(e, decrypt))
+			}
+			switch len(matches) {
+			case 0:
+				return agenterrors.Newf(agenterrors.FixableByAgent, "no env var %q in project %q", args[1], args[0]).
+					WithHint("run 'agent-vercel env list " + args[0] + "' to see keys")
+			case 1:
+				return printSingle(g, matches[0])
+			default:
+				return emitList(g, matches, nil)
+			}
 		},
 	}
 	cmd.Flags().StringVar(&environment, "environment", "", "limit to this environment")
@@ -262,65 +258,63 @@ func envDiffCmd(g *GlobalFlags) *cobra.Command {
 		Short: "Diff env vars between two environments (which keys differ or are missing)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(func() error {
-				parts := strings.Split(environments, ",")
-				if len(parts) != 2 {
-					return agenterrors.Newf(agenterrors.FixableByAgent, "--environments needs exactly two, comma-separated (got %q)", environments)
-				}
-				a, b := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+			parts := strings.Split(environments, ",")
+			if len(parts) != 2 {
+				return agenterrors.Newf(agenterrors.FixableByAgent, "--environments needs exactly two, comma-separated (got %q)", environments)
+			}
+			a, b := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
 
-				// Decrypt so value-level differences (not just presence) surface.
-				envs, err := fetchEnv(g, cmd, args[0], "", "", true)
-				if err != nil {
-					return err
-				}
-				byKey := map[string]map[string]string{}
-				for _, e := range envs {
-					tg := targets(e)
-					for _, env := range []string{a, b} {
-						if tg[env] {
-							if byKey[e.Key] == nil {
-								byKey[e.Key] = map[string]string{}
-							}
-							byKey[e.Key][env] = e.Value
+			// Decrypt so value-level differences (not just presence) surface.
+			envs, err := fetchEnv(g, cmd, args[0], "", "", true)
+			if err != nil {
+				return err
+			}
+			byKey := map[string]map[string]string{}
+			for _, e := range envs {
+				tg := targets(e)
+				for _, env := range []string{a, b} {
+					if tg[env] {
+						if byKey[e.Key] == nil {
+							byKey[e.Key] = map[string]string{}
 						}
+						byKey[e.Key][env] = e.Value
 					}
 				}
-				keys := make([]string, 0, len(byKey))
-				for k := range byKey {
-					keys = append(keys, k)
-				}
-				sort.Strings(keys)
+			}
+			keys := make([]string, 0, len(byKey))
+			for k := range byKey {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
 
-				rows := make([]any, 0)
-				for _, k := range keys {
-					va, oka := byKey[k][a]
-					vb, okb := byKey[k][b]
-					status := ""
-					switch {
-					case oka && !okb:
-						status = "only_" + a
-					case okb && !oka:
-						status = "only_" + b
-					case va == vb:
-						status = "same"
-					default:
-						status = "different"
-					}
-					if status == "same" {
-						continue // diff shows differences only
-					}
-					row := map[string]any{"key": k, "status": status}
-					if oka {
-						row[a] = va
-					}
-					if okb {
-						row[b] = vb
-					}
-					rows = append(rows, row)
+			rows := make([]any, 0)
+			for _, k := range keys {
+				va, oka := byKey[k][a]
+				vb, okb := byKey[k][b]
+				status := ""
+				switch {
+				case oka && !okb:
+					status = "only_" + a
+				case okb && !oka:
+					status = "only_" + b
+				case va == vb:
+					status = "same"
+				default:
+					status = "different"
 				}
-				return emitList(g, rows, nil)
-			})
+				if status == "same" {
+					continue // diff shows differences only
+				}
+				row := map[string]any{"key": k, "status": status}
+				if oka {
+					row[a] = va
+				}
+				if okb {
+					row[b] = vb
+				}
+				rows = append(rows, row)
+			}
+			return emitList(g, rows, nil)
 		},
 	}
 	cmd.Flags().StringVar(&environments, "environments", "production,preview", "two environments to compare, comma-separated")

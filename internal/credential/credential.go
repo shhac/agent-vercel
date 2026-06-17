@@ -24,10 +24,8 @@ package credential
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -70,17 +68,6 @@ type Credentials struct {
 
 // ErrAuthNotFound is returned when no stored credential matches a request.
 var ErrAuthNotFound = errors.New("credential not found")
-
-// AmbiguousSelectorError is returned when an --auth selector matches more than
-// one stored credential label.
-type AmbiguousSelectorError struct {
-	Selector string
-	Matches  []string
-}
-
-func (e *AmbiguousSelectorError) Error() string {
-	return fmt.Sprintf("auth selector %q is ambiguous; matches: %s", e.Selector, strings.Join(e.Matches, ", "))
-}
 
 // Store reads and writes the credentials file plus the backing Keychain.
 type Store struct {

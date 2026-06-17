@@ -7,7 +7,14 @@ import (
 
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
 	"github.com/shhac/agent-vercel/internal/output"
+	"github.com/spf13/cobra"
 )
+
+// addYesFlag registers the standard --yes gate flag and returns the bound value,
+// keeping the flag's name/default/wording identical across every gated command.
+func addYesFlag(cmd *cobra.Command) *bool {
+	return cmd.Flags().Bool("yes", false, "confirm this state-changing action")
+}
 
 // wrapAgent wraps a (usually decode) error as fixable_by: agent.
 func wrapAgent(err error) error { return agenterrors.Wrap(err, agenterrors.FixableByAgent) }
@@ -84,6 +91,21 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return string(r[:n]) + "\n…"
+}
+
+// getOne prints a single fetched resource: the raw payload under --full, else
+// the compact projection from fn. The single-resource counterpart to the
+// list-side compactRows + emitList, so the full-vs-compact policy lives in one
+// place on both paths.
+func getOne(g *GlobalFlags, raw json.RawMessage, fn func(json.RawMessage) (map[string]any, error)) error {
+	if g.Full {
+		return printRaw(g, raw)
+	}
+	m, err := fn(raw)
+	if err != nil {
+		return err
+	}
+	return printSingle(g, m)
 }
 
 // printRaw prints a raw API payload in the resolved single-resource format

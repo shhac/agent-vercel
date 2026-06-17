@@ -41,6 +41,11 @@ func (s *Store) Path() string { return s.path }
 
 func isPlaceholder(v string) bool { return v == "" || v == keychainPlaceholder }
 
+// IsPlaceholder reports whether v is empty or the keychain placeholder — i.e.
+// not real secret material. Exported so callers (e.g. the CLI) can check a
+// hydrated secret without re-encoding the placeholder sentinel themselves.
+func IsPlaceholder(v string) bool { return isPlaceholder(v) }
+
 // secretAccount is the Keychain account key for one credential's secret, keyed
 // by "<type>:<label>" so several credentials (and, later, secret kinds) coexist
 // under one service.

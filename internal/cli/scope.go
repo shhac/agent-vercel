@@ -24,26 +24,24 @@ func registerScope(root *cobra.Command, g *GlobalFlags) {
 		Short:   "List scopes (teams) reachable by the active credential (GET /v2/teams)",
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			return run(func() error {
-				r, err := resolveClient(g)
-				if err != nil {
-					return err
-				}
-				teams, err := r.client.ListTeams(cmd.Context())
-				if err != nil {
-					return err
-				}
-				w := output.NewNDJSONWriter(os.Stdout)
-				for _, t := range teams {
-					_ = w.WriteItem(map[string]any{
-						"id":      t.ID,
-						"slug":    t.Slug,
-						"name":    t.Name,
-						"default": t.Slug == r.creds.DefaultScope,
-					})
-				}
-				return nil
-			})
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			teams, err := r.client.ListTeams(cmd.Context())
+			if err != nil {
+				return err
+			}
+			w := output.NewNDJSONWriter(os.Stdout)
+			for _, t := range teams {
+				_ = w.WriteItem(map[string]any{
+					"id":      t.ID,
+					"slug":    t.Slug,
+					"name":    t.Name,
+					"default": t.Slug == r.creds.DefaultScope,
+				})
+			}
+			return nil
 		},
 	}
 
@@ -52,27 +50,25 @@ func registerScope(root *cobra.Command, g *GlobalFlags) {
 		Short: "Show the active scope and credential",
 		Args:  cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return run(func() error {
-				store, err := newCredStore()
-				if err != nil {
-					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-				}
-				creds, err := store.Load()
-				if err != nil {
-					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-				}
-				scope := g.Scope
-				if scope == "" {
-					scope = creds.DefaultScope
-				}
-				if scope == "" {
-					scope = "(personal account)"
-				}
-				return printSingle(g, map[string]any{
-					"scope":         scope,
-					"default_scope": creds.DefaultScope,
-					"default_auth":  creds.DefaultAuth,
-				})
+			store, err := newCredStore()
+			if err != nil {
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
+			}
+			creds, err := store.Load()
+			if err != nil {
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
+			}
+			scope := g.Scope
+			if scope == "" {
+				scope = creds.DefaultScope
+			}
+			if scope == "" {
+				scope = "(personal account)"
+			}
+			return printSingle(g, map[string]any{
+				"scope":         scope,
+				"default_scope": creds.DefaultScope,
+				"default_auth":  creds.DefaultAuth,
 			})
 		},
 	}
@@ -82,20 +78,18 @@ func registerScope(root *cobra.Command, g *GlobalFlags) {
 		Short: "Set the default scope (empty arg resets to personal account)",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			return run(func() error {
-				store, err := newCredStore()
-				if err != nil {
-					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-				}
-				scope := ""
-				if len(args) == 1 {
-					scope = args[0]
-				}
-				if err := store.SetDefaultScope(scope); err != nil {
-					return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-				}
-				return printSingle(g, map[string]any{"default_scope": scope})
-			})
+			store, err := newCredStore()
+			if err != nil {
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
+			}
+			scope := ""
+			if len(args) == 1 {
+				scope = args[0]
+			}
+			if err := store.SetDefaultScope(scope); err != nil {
+				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
+			}
+			return printSingle(g, map[string]any{"default_scope": scope})
 		},
 	}
 

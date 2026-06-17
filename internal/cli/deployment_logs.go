@@ -18,38 +18,36 @@ func deploymentLogsCmd(g *GlobalFlags) *cobra.Command {
 		Short: "Build logs for a deployment (GET /v3/deployments/{id}/events)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(func() error {
-				q := url.Values{}
-				setIf(q, "statusCode", status)
-				setIf(q, "direction", direction)
-				if limit != 0 {
-					q.Set("limit", strconv.Itoa(limit))
+			q := url.Values{}
+			setIf(q, "statusCode", status)
+			setIf(q, "direction", direction)
+			if limit != 0 {
+				q.Set("limit", strconv.Itoa(limit))
+			}
+			if err := setTimeFilter(q, "since", since); err != nil {
+				return err
+			}
+			if err := setTimeFilter(q, "until", until); err != nil {
+				return err
+			}
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			events, err := r.client.DeploymentEvents(cmd.Context(), args[0], q)
+			if err != nil {
+				return err
+			}
+			max := bodyLimit(g, 4000)
+			rows := make([]any, 0, len(events))
+			for _, ev := range events {
+				if g.Full {
+					rows = append(rows, ev)
+					continue
 				}
-				if err := setTimeFilter(q, "since", since); err != nil {
-					return err
-				}
-				if err := setTimeFilter(q, "until", until); err != nil {
-					return err
-				}
-				r, err := resolveClient(g)
-				if err != nil {
-					return err
-				}
-				events, err := r.client.DeploymentEvents(cmd.Context(), args[0], q)
-				if err != nil {
-					return err
-				}
-				max := bodyLimit(g, 4000)
-				rows := make([]any, 0, len(events))
-				for _, ev := range events {
-					if g.Full {
-						rows = append(rows, ev)
-						continue
-					}
-					rows = append(rows, compactBuildEvent(ev, max))
-				}
-				return emitList(g, rows, nil)
-			})
+				rows = append(rows, compactBuildEvent(ev, max))
+			}
+			return emitList(g, rows, nil)
 		},
 	}
 	f := cmd.Flags()
@@ -68,45 +66,43 @@ func deploymentRuntimeLogsCmd(g *GlobalFlags) *cobra.Command {
 		Short: "Runtime (function) logs for a deployment",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return run(func() error {
-				r, err := resolveClient(g)
-				if err != nil {
-					return err
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			// Runtime logs are keyed by projectId + deploymentId; resolve
+			// both from the deployment first.
+			raw, err := r.client.GetDeployment(cmd.Context(), args[0])
+			if err != nil {
+				return err
+			}
+			dep, err := compactDeployment(raw)
+			if err != nil {
+				return err
+			}
+			projectID, _ := dep["project_id"].(string)
+			depID, _ := dep["id"].(string)
+			if projectID == "" || depID == "" {
+				return agenterrors.New("could not resolve project for deployment", agenterrors.FixableByAgent)
+			}
+			logs, err := r.client.RuntimeLogs(cmd.Context(), projectID, depID, url.Values{})
+			if err != nil {
+				return err
+			}
+			max := bodyLimit(g, 4000)
+			rows := make([]any, 0, len(logs))
+			for _, lg := range logs {
+				rl, raw := compactRuntimeLog(lg, max)
+				if !matchRuntimeFilter(rl, level, status, path) {
+					continue
 				}
-				// Runtime logs are keyed by projectId + deploymentId; resolve
-				// both from the deployment first.
-				raw, err := r.client.GetDeployment(cmd.Context(), args[0])
-				if err != nil {
-					return err
+				if g.Full {
+					rows = append(rows, raw)
+				} else {
+					rows = append(rows, rl)
 				}
-				dep, err := compactDeployment(raw)
-				if err != nil {
-					return err
-				}
-				projectID, _ := dep["project_id"].(string)
-				depID, _ := dep["id"].(string)
-				if projectID == "" || depID == "" {
-					return agenterrors.New("could not resolve project for deployment", agenterrors.FixableByAgent)
-				}
-				logs, err := r.client.RuntimeLogs(cmd.Context(), projectID, depID, url.Values{})
-				if err != nil {
-					return err
-				}
-				max := bodyLimit(g, 4000)
-				rows := make([]any, 0, len(logs))
-				for _, lg := range logs {
-					rl, raw := compactRuntimeLog(lg, max)
-					if !matchRuntimeFilter(rl, level, status, path) {
-						continue
-					}
-					if g.Full {
-						rows = append(rows, raw)
-					} else {
-						rows = append(rows, rl)
-					}
-				}
-				return emitList(g, rows, nil)
-			})
+			}
+			return emitList(g, rows, nil)
 		},
 	}
 	f := cmd.Flags()

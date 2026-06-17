@@ -97,11 +97,6 @@ func newRootCmd(version string) *cobra.Command {
 	return root
 }
 
-// run is a thin passthrough kept for readability at command sites; error
-// rendering is centralized in Execute so every path (RunE, PreRunE, flag
-// errors, unknown subcommands) is rendered uniformly, exactly once.
-func run(fn func() error) error { return fn() }
-
 func writeErr(err error) { output.WriteError(os.Stderr, err) }
 
 // handleUnknownSubcommand returns a structured error listing valid subcommands

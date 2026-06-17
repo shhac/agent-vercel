@@ -115,3 +115,64 @@ func TestDeploymentRuntimeLogsStatusFilter(t *testing.T) {
 		t.Fatalf("runtime 5xx filter = %s", out)
 	}
 }
+
+func TestEnvSetPostsTargetAndType(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	// --full prints the echoed mock response, so we can assert the wire body.
+	out, _, err := execCLI(t, srv.URL, "env", "set", "web", "API_KEY", "secret",
+		"--environment", "production,preview", "--type", "encrypted", "--yes", "--full")
+	if err != nil {
+		t.Fatalf("env set: %v", err)
+	}
+	created, ok := decodeJSON(t, out)["created"].(map[string]any)
+	if !ok {
+		t.Fatalf("no created object: %s", out)
+	}
+	if created["type"] != "encrypted" || created["key"] != "API_KEY" {
+		t.Fatalf("wire body wrong: %v", created)
+	}
+	target, ok := created["target"].([]any)
+	if !ok || len(target) != 2 || target[0] != "production" || target[1] != "preview" {
+		t.Fatalf("target not posted as expected: %v", created["target"])
+	}
+}
+
+func TestEnvSetEmptyEnvironmentIsAgentError(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	_, errOut, err := execCLI(t, srv.URL, "env", "set", "web", "K", "v", "--environment", "", "--yes")
+	if err == nil {
+		t.Fatal("expected error for empty --environment")
+	}
+	if m := decodeJSON(t, errOut); m["fixable_by"] != "agent" {
+		t.Fatalf("empty --environment should be agent error: %v", m)
+	}
+}
+
+func TestEnvDiffEmptyValuesClassifiedSame(t *testing.T) {
+	env := []map[string]any{
+		{"id": "e1", "key": "EMPTY_BOTH", "target": []any{"production", "preview"}, "type": "encrypted", "value": ""},
+		{"id": "e2", "key": "ONLY_P", "target": []any{"production"}, "type": "plain", "value": "x"},
+	}
+	srv := httptest.NewServer(mockvercel.New(mockvercel.WithEnv(env)))
+	defer srv.Close()
+
+	out, _, err := execCLI(t, srv.URL, "env", "diff", "web")
+	if err != nil {
+		t.Fatalf("diff: %v", err)
+	}
+	status := map[string]string{}
+	for _, r := range ndjsonLines(t, out) {
+		status[r["key"].(string)] = r["status"].(string)
+	}
+	// Identical empty values in both environments → same → omitted from the diff.
+	if _, ok := status["EMPTY_BOTH"]; ok {
+		t.Fatalf("EMPTY_BOTH (empty in both) should be omitted, got %q", status["EMPTY_BOTH"])
+	}
+	if status["ONLY_P"] != "only_production" {
+		t.Fatalf("ONLY_P = %q; want only_production", status["ONLY_P"])
+	}
+}
