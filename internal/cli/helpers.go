@@ -1,0 +1,67 @@
+package cli
+
+import (
+	"encoding/json"
+	"net/url"
+	"os"
+
+	agenterrors "github.com/shhac/agent-vercel/internal/errors"
+	"github.com/shhac/agent-vercel/internal/output"
+)
+
+// setIf sets a query param only when val is non-empty.
+func setIf(q url.Values, key, val string) {
+	if val != "" {
+		q.Set(key, val)
+	}
+}
+
+// putIf sets a map entry only when val is non-empty.
+func putIf(m map[string]any, key, val string) {
+	if val != "" {
+		m[key] = val
+	}
+}
+
+// metaStr returns the first non-empty string value among the given meta keys.
+func metaStr(meta map[string]any, keys ...string) string {
+	for _, k := range keys {
+		if v, ok := meta[k].(string); ok && v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// compactRows maps raw API objects to output rows: the raw object when full is
+// set, otherwise the compact projection produced by fn.
+func compactRows(items []json.RawMessage, full bool, fn func(json.RawMessage) (map[string]any, error)) ([]any, error) {
+	rows := make([]any, 0, len(items))
+	for _, it := range items {
+		if full {
+			rows = append(rows, it)
+			continue
+		}
+		m, err := fn(it)
+		if err != nil {
+			return nil, err
+		}
+		rows = append(rows, m)
+	}
+	return rows, nil
+}
+
+// printRaw prints a raw API payload in the resolved single-resource format
+// (decoded so --format and null-pruning apply).
+func printRaw(g *GlobalFlags, raw json.RawMessage) error {
+	var v any
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return agenterrors.Wrap(err, agenterrors.FixableByAgent)
+	}
+	format, err := output.ResolveFormat(g.Format, output.FormatJSON)
+	if err != nil {
+		return err
+	}
+	output.Print(os.Stdout, v, format, true)
+	return nil
+}
