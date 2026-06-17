@@ -1,0 +1,128 @@
+package credential
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func newTestStore(t *testing.T) (*Store, *MemoryKeychain) {
+	t.Helper()
+	dir := t.TempDir()
+	kc := NewMemoryKeychain()
+	return NewWithStore(filepath.Join(dir, "credentials.json"), kc), kc
+}
+
+func TestUpsertStoresSecretInKeychainNotFile(t *testing.T) {
+	s, kc := newTestStore(t)
+	if err := s.Upsert(Auth{Label: "personal", Secret: "secret-token-abc"}); err != nil {
+		t.Fatalf("upsert: %v", err)
+	}
+
+	// The secret must be in the Keychain, keyed by "<type>:<label>"...
+	if got, ok := kc.Get("token:personal"); !ok || got != "secret-token-abc" {
+		t.Fatalf("keychain secret = %q, %v; want secret-token-abc, true", got, ok)
+	}
+
+	// ...and the on-disk file must NOT contain the raw secret.
+	raw, err := os.ReadFile(s.Path())
+	if err != nil {
+		t.Fatalf("read file: %v", err)
+	}
+	if strings.Contains(string(raw), "secret-token-abc") {
+		t.Fatalf("credentials file leaked the raw secret:\n%s", raw)
+	}
+	if !strings.Contains(string(raw), keychainPlaceholder) {
+		t.Fatalf("credentials file missing %s placeholder:\n%s", keychainPlaceholder, raw)
+	}
+}
+
+func TestUpsertDefaultsTypeToToken(t *testing.T) {
+	s, _ := newTestStore(t)
+	_ = s.Upsert(Auth{Label: "x", Secret: "t"})
+	creds, _ := s.Load()
+	if creds.Auths[0].Type != AuthToken {
+		t.Fatalf("type = %q; want %q", creds.Auths[0].Type, AuthToken)
+	}
+}
+
+func TestLoadHydratesSecretFromKeychain(t *testing.T) {
+	s, _ := newTestStore(t)
+	if err := s.Upsert(Auth{Label: "work", Secret: "tok-xyz"}); err != nil {
+		t.Fatalf("upsert: %v", err)
+	}
+	creds, err := s.Load()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if len(creds.Auths) != 1 || creds.Auths[0].Secret != "tok-xyz" {
+		t.Fatalf("hydrated secret = %+v; want tok-xyz", creds.Auths)
+	}
+	if creds.DefaultAuth != "work" {
+		t.Fatalf("default auth = %q; want work", creds.DefaultAuth)
+	}
+}
+
+func TestSecretStatusesNeverReturnsSecretMaterial(t *testing.T) {
+	s, _ := newTestStore(t)
+	_ = s.Upsert(Auth{Label: "personal", Secret: "top-secret"})
+
+	st, err := s.SecretStatuses()
+	if err != nil {
+		t.Fatalf("statuses: %v", err)
+	}
+	if st["personal"] != SecretInKeychain {
+		t.Fatalf("status = %q; want keychain", st["personal"])
+	}
+	// Round-trip the statuses through JSON; the secret must not appear.
+	b, _ := json.Marshal(st)
+	if strings.Contains(string(b), "top-secret") {
+		t.Fatalf("SecretStatuses leaked secret material: %s", b)
+	}
+}
+
+func TestRemoveDeletesKeychainEntryAndReassignsDefault(t *testing.T) {
+	s, kc := newTestStore(t)
+	_ = s.Upsert(Auth{Label: "a", Secret: "ta"})
+	_ = s.Upsert(Auth{Label: "b", Secret: "tb"})
+
+	if err := s.Remove("a"); err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	if _, ok := kc.Get("token:a"); ok {
+		t.Fatalf("keychain entry for removed credential still present")
+	}
+	creds, _ := s.Load()
+	if len(creds.Auths) != 1 || creds.Auths[0].Label != "b" {
+		t.Fatalf("remaining auths = %+v; want [b]", creds.Auths)
+	}
+	if creds.DefaultAuth != "b" {
+		t.Fatalf("default after removing default = %q; want b", creds.DefaultAuth)
+	}
+}
+
+func TestSetDefaultScopeIsNonSecretAndPersists(t *testing.T) {
+	s, _ := newTestStore(t)
+	_ = s.Upsert(Auth{Label: "personal", Secret: "t"})
+	if err := s.SetDefaultScope("acme"); err != nil {
+		t.Fatalf("set scope: %v", err)
+	}
+	creds, _ := s.Load()
+	if creds.DefaultScope != "acme" {
+		t.Fatalf("default scope = %q; want acme", creds.DefaultScope)
+	}
+}
+
+func TestFilePermissionsAre0600(t *testing.T) {
+	s, _ := newTestStore(t)
+	_ = s.Upsert(Auth{Label: "x", Secret: "t"})
+	info, err := os.Stat(s.Path())
+	if err != nil {
+		t.Fatalf("stat: %v", err)
+	}
+	if perm := info.Mode().Perm(); perm != 0o600 {
+		t.Fatalf("file perm = %o; want 600", perm)
+	}
+}
