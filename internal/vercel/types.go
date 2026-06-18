@@ -35,9 +35,12 @@ func (c *Client) GetUser(ctx context.Context) (User, error) {
 	return env.User, nil
 }
 
-// ListTeams lists the teams reachable by the token. Used by `scope list`.
+// ListTeams lists the teams reachable by the token. Used by `scope list` and to
+// resolve a slug scope to a teamId. /v2/teams is account-level — it must be
+// called unscoped, since injecting the active team scope (slug) filters/breaks
+// the listing on the real API.
 func (c *Client) ListTeams(ctx context.Context) ([]Team, error) {
-	raw, err := c.Get(ctx, "/v2/teams", nil)
+	raw, err := c.unscoped().Get(ctx, "/v2/teams", nil)
 	if err != nil {
 		return nil, err
 	}

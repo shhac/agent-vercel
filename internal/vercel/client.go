@@ -171,6 +171,16 @@ func (c *Client) setAuthHeaders(req *http.Request) {
 	req.Header.Set("User-Agent", c.cfg.UserAgent)
 }
 
+// unscoped returns a shallow copy of the client with no team scope, for
+// account-level endpoints (e.g. /v2/teams) where injecting a team scope param is
+// meaningless or actively harmful — and for endpoints that require an explicit
+// teamId in the query rather than the slug withScope would otherwise add.
+func (c *Client) unscoped() *Client {
+	cp := *c
+	cp.cfg.Scope = ""
+	return &cp
+}
+
 // withScope adds teamId or slug to the query when a scope is set. A "team_"
 // prefix marks an id; anything else is treated as a slug.
 func (c *Client) withScope(query url.Values) url.Values {

@@ -3,7 +3,6 @@ package cli
 import (
 	"encoding/json"
 
-	"github.com/shhac/agent-vercel/internal/vercel"
 	"github.com/spf13/cobra"
 )
 
@@ -24,9 +23,15 @@ func registerFirewall(root *cobra.Command, g *GlobalFlags) {
 		Short: "Show the active firewall config: enabled state, custom rules, IP rules, managed rulesets",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return emitOne(g, func(c *vercel.Client) (json.RawMessage, error) {
-				return c.FirewallConfig(cmd.Context(), args[0])
-			}, compactFirewallConfig)
+			r, teamID, err := firewallScope(g, cmd)
+			if err != nil {
+				return err
+			}
+			raw, err := r.client.FirewallConfig(cmd.Context(), teamID, args[0])
+			if err != nil {
+				return err
+			}
+			return getOne(g, raw, compactFirewallConfig)
 		},
 	}
 
@@ -36,9 +41,15 @@ func registerFirewall(root *cobra.Command, g *GlobalFlags) {
 		Short: "Show active-attack / DDoS anomalies detected for a project",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return emitOne(g, func(c *vercel.Client) (json.RawMessage, error) {
-				return c.FirewallAttackStatus(cmd.Context(), args[0], since)
-			}, compactAttackStatus)
+			r, teamID, err := firewallScope(g, cmd)
+			if err != nil {
+				return err
+			}
+			raw, err := r.client.FirewallAttackStatus(cmd.Context(), teamID, args[0], since)
+			if err != nil {
+				return err
+			}
+			return getOne(g, raw, compactAttackStatus)
 		},
 	}
 	attack.Flags().IntVar(&since, "since", 0, "look back this many days (0 = API default, 1 day)")
@@ -48,15 +59,36 @@ func registerFirewall(root *cobra.Command, g *GlobalFlags) {
 		Short: "List the firewall system-bypass rules (sources allowed to skip the WAF)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			r, teamID, err := firewallScope(g, cmd)
+			if err != nil {
+				return err
+			}
+			raw, err := r.client.FirewallBypass(cmd.Context(), teamID, args[0])
+			if err != nil {
+				return err
+			}
 			// Shape is uncertain (object or array of rules); print it raw.
-			return emitRaw(g, func(c *vercel.Client) (json.RawMessage, error) {
-				return c.FirewallBypass(cmd.Context(), args[0])
-			})
+			return printRaw(g, raw)
 		},
 	}
 
 	cmd.AddCommand(config, attack, bypass)
 	root.AddCommand(cmd)
+}
+
+// firewallScope resolves the client and the explicit teamId the Firewall API
+// requires (empty for the personal account). Centralizes the prologue the three
+// firewall reads share.
+func firewallScope(g *GlobalFlags, cmd *cobra.Command) (*resolved, string, error) {
+	r, err := resolveClient(g)
+	if err != nil {
+		return nil, "", err
+	}
+	teamID, err := scopeTeamID(cmd, r)
+	if err != nil {
+		return nil, "", err
+	}
+	return r, teamID, nil
 }
 
 // compactFirewallConfig projects the active firewall config defensively: the

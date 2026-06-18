@@ -30,10 +30,18 @@ func New(opts ...Option) http.Handler {
 			"pagination": map[string]any{"count": len(o.TeamMembers)},
 		})
 	}))
-	mux.HandleFunc("GET /v2/teams", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("GET /v2/teams", requireBearer(func(w http.ResponseWriter, r *http.Request) {
+		// Fidelity: /v2/teams is account-level. The real API does NOT return the
+		// active team when a `slug` scope param is injected, so the client must
+		// call it unscoped. Mirror that: a slug param yields no teams, which is
+		// what broke slug-scope team resolution before the unscoped-ListTeams fix.
+		teams := o.Teams
+		if r.URL.Query().Get("slug") != "" {
+			teams = nil
+		}
 		writeJSON(w, http.StatusOK, map[string]any{
-			"teams":      o.Teams,
-			"pagination": map[string]any{"count": len(o.Teams)},
+			"teams":      teams,
+			"pagination": map[string]any{"count": len(teams)},
 		})
 	}))
 
@@ -177,22 +185,37 @@ func New(opts ...Option) http.Handler {
 		writeJSON(w, http.StatusOK, map[string]any{"certs": certs})
 	}))
 	mux.HandleFunc("GET /v1/security/firewall/config/active", requireBearer(func(w http.ResponseWriter, r *http.Request) {
-		// prj_api is the "quiet" project: firewall off, no rules — the negative path.
-		if r.URL.Query().Get("projectId") == "prj_api" {
-			writeJSON(w, http.StatusOK, map[string]any{"firewallEnabled": false, "version": 1, "rules": []any{}, "ips": []any{}, "managedRules": map[string]any{}})
+		if !requireTeamID(w, r) {
 			return
 		}
-		writeJSON(w, http.StatusOK, o.FirewallConfig)
+		switch r.URL.Query().Get("projectId") {
+		case "prj_api": // no data: firewall present but off, nothing configured
+			writeJSON(w, http.StatusOK, map[string]any{"firewallEnabled": false, "version": 1, "rules": []any{}, "ips": []any{}, "managedRules": map[string]any{}})
+		case "prj_none": // unavailable: no firewall config exists for this project
+			writeErr(w, http.StatusNotFound, "not_found", "Config not found")
+		default: // in plan + data
+			writeJSON(w, http.StatusOK, o.FirewallConfig)
+		}
 	}))
 	mux.HandleFunc("GET /v1/security/firewall/attack-status", requireBearer(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("projectId") == "prj_api" {
+		if !requireTeamID(w, r) {
+			return
+		}
+		if r.URL.Query().Get("projectId") == "prj_api" { // no data: not under attack
 			writeJSON(w, http.StatusOK, map[string]any{"anomalies": []any{}})
 			return
 		}
-		writeJSON(w, http.StatusOK, o.AttackStatus)
+		writeJSON(w, http.StatusOK, o.AttackStatus) // in plan + data: anomalies present
 	}))
-	mux.HandleFunc("GET /v1/security/firewall/bypass", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusOK, o.FirewallBypass)
+	mux.HandleFunc("GET /v1/security/firewall/bypass", requireBearer(func(w http.ResponseWriter, r *http.Request) {
+		if !requireTeamID(w, r) {
+			return
+		}
+		if r.URL.Query().Get("projectId") == "prj_free" { // unavailable: plan lacks IP bypass
+			writeErr(w, http.StatusNotFound, "not_found", "IP Bypass is unavailable for this plan.")
+			return
+		}
+		writeJSON(w, http.StatusOK, o.FirewallBypass) // in plan + data
 	}))
 	mux.HandleFunc("POST /v1/edge-cache/invalidate-by-tags", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK) // Vercel returns 200 with no body
@@ -408,6 +431,19 @@ func requireBearer(next http.HandlerFunc) http.HandlerFunc {
 		}
 		next(w, r)
 	}
+}
+
+// requireTeamID mirrors the real Firewall API's scoping: it does NOT accept the
+// `slug` that other endpoints take — a team must be addressed by an explicit
+// `teamId`. A slug without a teamId (the pre-fix bug) is rejected with 400;
+// a teamId is accepted; neither (the personal account) is allowed.
+func requireTeamID(w http.ResponseWriter, r *http.Request) bool {
+	q := r.URL.Query()
+	if q.Get("teamId") == "" && q.Get("slug") != "" {
+		writeErr(w, http.StatusBadRequest, "bad_request", "Invalid request: missing required property `teamId`.")
+		return false
+	}
+	return true
 }
 
 func writeJSON(w http.ResponseWriter, code int, body any) {

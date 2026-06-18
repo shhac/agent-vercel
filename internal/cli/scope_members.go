@@ -38,6 +38,16 @@ func resolveTeamID(cmd *cobra.Command, r *resolved) (string, error) {
 
 // scopeMemberCmd is the `scope member` group: list the team roster and get one
 // member by id/email/username.
+// scopeTeamID resolves the active scope to a concrete teamId for endpoints that
+// require it explicitly (the Vercel Firewall API rejects the slug). It returns
+// "" for the personal account (no scope), and otherwise the resolved id.
+func scopeTeamID(cmd *cobra.Command, r *resolved) (string, error) {
+	if r.scope == "" {
+		return "", nil
+	}
+	return resolveTeamID(cmd, r)
+}
+
 func scopeMemberCmd(g *GlobalFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "member",

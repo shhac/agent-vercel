@@ -87,7 +87,7 @@ distinct from the agent-vercel access token (never readable).
 
 | Command | Key flags |
 |---|---|
-| `domain list` | `--limit` |
+| `domain list` | `--cursor`, `--all` |
 | `domain get <domain>` | verification challenges, verified state |
 | `domain inspect <domain>` | nameserver / config check, misconfig reasons; plus SSL/ACME readiness (`configured_by`, `accepted_challenges`, `recommended_ipv4`/`recommended_cname`) |
 | `domain records list <domain>` | list DNS records |

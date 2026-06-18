@@ -51,6 +51,20 @@ func TestDrainsListByProject(t *testing.T) {
 	}
 }
 
+func TestDrainsListEmpty(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	// no data: a project with no drains targeting it → empty list, not an error.
+	out, _, err := execCLI(t, srv.URL, "drains", "list", "--project", "prj_api")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if rows := ndjsonLines(t, out); len(rows) != 0 {
+		t.Fatalf("expected no drains, got %d: %s", len(rows), out)
+	}
+}
+
 func TestDrainsGet(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New())
 	defer srv.Close()
