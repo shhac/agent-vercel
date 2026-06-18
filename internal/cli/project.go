@@ -108,19 +108,13 @@ func registerProject(root *cobra.Command, g *GlobalFlags) {
 		Short: "Show a project's authored CDN routing rules (redirects/rewrites/headers); --diff for staged-vs-live",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			r, err := resolveClient(g)
-			if err != nil {
-				return err
-			}
-			q := url.Values{}
-			if diff {
-				q.Set("diff", "true")
-			}
-			raw, err := r.client.ProjectRoutes(cmd.Context(), args[0], q)
-			if err != nil {
-				return err
-			}
-			return printRaw(g, raw)
+			return emitRaw(g, func(c *vercel.Client) (json.RawMessage, error) {
+				q := url.Values{}
+				if diff {
+					q.Set("diff", "true")
+				}
+				return c.ProjectRoutes(cmd.Context(), args[0], q)
+			})
 		},
 	}
 	routes.Flags().BoolVar(&diff, "diff", false, "show the staged-vs-production routing-rule diff")
@@ -137,10 +131,10 @@ func compactProtection(raw json.RawMessage) (map[string]any, error) {
 		DeploymentType string `json:"deploymentType"`
 	}
 	var p struct {
-		ID                 string                     `json:"id"`
-		Name               string                     `json:"name"`
-		SsoProtection      *gate                      `json:"ssoProtection"`
-		PasswordProtection *gate                      `json:"passwordProtection"`
+		ID                 string `json:"id"`
+		Name               string `json:"name"`
+		SsoProtection      *gate  `json:"ssoProtection"`
+		PasswordProtection *gate  `json:"passwordProtection"`
 		TrustedIps         *struct {
 			DeploymentType string            `json:"deploymentType"`
 			Addresses      []json.RawMessage `json:"addresses"`

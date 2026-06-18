@@ -23,6 +23,9 @@ func TestProjectProtection(t *testing.T) {
 	if m["vercel_authentication"] != "preview" {
 		t.Fatalf("sso scope = %v; want preview", m["vercel_authentication"])
 	}
+	if m["password_protection"] != "all" {
+		t.Fatalf("password gate = %v; want all", m["password_protection"])
+	}
 	tip, ok := m["trusted_ips"].(map[string]any)
 	if !ok || tip["scope"] != "all" || tip["addresses"].(float64) != 1 {
 		t.Fatalf("trusted_ips = %v", m["trusted_ips"])

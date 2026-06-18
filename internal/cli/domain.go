@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"time"
 
-	agenterrors "github.com/shhac/agent-vercel/internal/errors"
 	"github.com/shhac/agent-vercel/internal/vercel"
 	"github.com/spf13/cobra"
 )
@@ -62,29 +61,7 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 			if g.Full {
 				return printRaw(g, cfg)
 			}
-			out := map[string]any{"domain": args[0]}
-			var c struct {
-				Misconfigured      bool            `json:"misconfigured"`
-				ConfiguredBy       string          `json:"configuredBy"`
-				AcceptedChallenges []string        `json:"acceptedChallenges"`
-				RecommendedIPv4    json.RawMessage `json:"recommendedIPv4"`
-				RecommendedCNAME   json.RawMessage `json:"recommendedCNAME"`
-			}
-			_ = json.Unmarshal(cfg, &c)
-			out["misconfigured"] = c.Misconfigured
-			// SSL/ACME readiness: configuredBy shows how Vercel resolves the
-			// domain; acceptedChallenges (empty ⇒ a cert cannot be issued) and the
-			// recommended values are the remediation path.
-			putIf(out, "configured_by", c.ConfiguredBy)
-			if len(c.AcceptedChallenges) > 0 {
-				out["accepted_challenges"] = c.AcceptedChallenges
-			}
-			if len(c.RecommendedIPv4) > 0 && string(c.RecommendedIPv4) != "null" {
-				out["recommended_ipv4"] = c.RecommendedIPv4
-			}
-			if len(c.RecommendedCNAME) > 0 && string(c.RecommendedCNAME) != "null" {
-				out["recommended_cname"] = c.RecommendedCNAME
-			}
+			out := compactDomainConfig(args[0], cfg)
 			// The actionable bit — intended vs actual nameservers, verified —
 			// lives on the domain record; fold it in best-effort.
 			if raw, err := r.client.GetDomain(cmd.Context(), args[0]); err == nil {
@@ -125,15 +102,10 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 		Short: "Show a domain's registration / transfer status (registrar)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			r, err := resolveClient(g)
-			if err != nil {
-				return err
-			}
-			raw, err := r.client.DomainTransfer(cmd.Context(), args[0])
-			if err != nil {
-				return err
-			}
-			return printRaw(g, raw) // small registrar status object; shape varies
+			// small registrar status object; shape varies — print raw
+			return emitRaw(g, func(c *vercel.Client) (json.RawMessage, error) {
+				return c.DomainTransfer(cmd.Context(), args[0])
+			})
 		},
 	}
 
@@ -290,89 +262,6 @@ func domainRecordsCmd(g *GlobalFlags) *cobra.Command {
 	return cmd
 }
 
-func domainAddCmd(g *GlobalFlags) *cobra.Command {
-	var redirect, gitBranch string
-	var yes *bool
-	cmd := &cobra.Command{
-		Use:   "add <project> <domain>",
-		Short: "Add a domain to a project",
-		Args:  cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			project, domain := args[0], args[1]
-			r, err := confirmAndClient(g, *yes, "add domain "+domain+" to "+project,
-				"agent-vercel domain add "+project+" "+domain+" --yes")
-			if err != nil {
-				return err
-			}
-			body := map[string]any{"name": domain}
-			putIf(body, "redirect", redirect)
-			putIf(body, "gitBranch", gitBranch)
-			raw, err := r.client.AddProjectDomain(cmd.Context(), project, body)
-			if err != nil {
-				return err
-			}
-			return printRaw(g, raw)
-		},
-	}
-	cmd.Flags().StringVar(&redirect, "redirect", "", "redirect target domain")
-	cmd.Flags().StringVar(&gitBranch, "git-branch", "", "git branch to link the domain to")
-	yes = addYesFlag(cmd)
-	return cmd
-}
-
-func domainRmCmd(g *GlobalFlags) *cobra.Command {
-	var yes *bool
-	cmd := &cobra.Command{
-		Use:   "rm <project> <domain>",
-		Short: "Remove a domain from a project",
-		Args:  cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			project, domain := args[0], args[1]
-			r, err := confirmAndClient(g, *yes, "remove domain "+domain+" from "+project,
-				"agent-vercel domain rm "+project+" "+domain+" --yes")
-			if err != nil {
-				return err
-			}
-			if _, err := r.client.RemoveProjectDomain(cmd.Context(), project, domain); err != nil {
-				return err
-			}
-			return printSingle(g, map[string]any{"removed": domain, "project": project})
-		},
-	}
-	yes = addYesFlag(cmd)
-	return cmd
-}
-
-func domainVerifyCmd(g *GlobalFlags) *cobra.Command {
-	var project string
-	var yes *bool
-	cmd := &cobra.Command{
-		Use:   "verify <domain> --project <p>",
-		Short: "Trigger verification of a project domain",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			domain := args[0]
-			if project == "" {
-				return agenterrors.New("--project is required", agenterrors.FixableByAgent).
-					WithHint("pass --project <id|name>")
-			}
-			r, err := confirmAndClient(g, *yes, "verify domain "+domain+" on "+project,
-				"agent-vercel domain verify "+domain+" --project "+project+" --yes")
-			if err != nil {
-				return err
-			}
-			raw, err := r.client.VerifyProjectDomain(cmd.Context(), project, domain)
-			if err != nil {
-				return err
-			}
-			return printRaw(g, raw)
-		},
-	}
-	cmd.Flags().StringVar(&project, "project", "", "project id or name (required)")
-	yes = addYesFlag(cmd)
-	return cmd
-}
-
 type rawDomain struct {
 	Name                string   `json:"name"`
 	Verified            bool     `json:"verified"`
@@ -402,6 +291,35 @@ func compactDomain(raw json.RawMessage) (map[string]any, error) {
 
 // compactProjectDomain projects one entry of the apex→project reverse map: the
 // domain name, the project it is on, verified state, and any redirect binding.
+// compactDomainConfig projects a domain's /config payload for `domain inspect`:
+// the misconfiguration flag plus SSL/ACME readiness (configuredBy,
+// acceptedChallenges — empty ⇒ a cert cannot be issued — and the recommended
+// IPv4/CNAME remediation values). Best-effort: a malformed payload yields the
+// zero-value projection rather than failing the command (the caller folds in
+// nameserver state from the domain record separately).
+func compactDomainConfig(domain string, cfg json.RawMessage) map[string]any {
+	var c struct {
+		Misconfigured      bool            `json:"misconfigured"`
+		ConfiguredBy       string          `json:"configuredBy"`
+		AcceptedChallenges []string        `json:"acceptedChallenges"`
+		RecommendedIPv4    json.RawMessage `json:"recommendedIPv4"`
+		RecommendedCNAME   json.RawMessage `json:"recommendedCNAME"`
+	}
+	_ = json.Unmarshal(cfg, &c)
+	out := map[string]any{"domain": domain, "misconfigured": c.Misconfigured}
+	putIf(out, "configured_by", c.ConfiguredBy)
+	if len(c.AcceptedChallenges) > 0 {
+		out["accepted_challenges"] = c.AcceptedChallenges
+	}
+	if len(c.RecommendedIPv4) > 0 && string(c.RecommendedIPv4) != "null" {
+		out["recommended_ipv4"] = c.RecommendedIPv4
+	}
+	if len(c.RecommendedCNAME) > 0 && string(c.RecommendedCNAME) != "null" {
+		out["recommended_cname"] = c.RecommendedCNAME
+	}
+	return out
+}
+
 func compactProjectDomain(raw json.RawMessage) (map[string]any, error) {
 	var d struct {
 		Name               string `json:"name"`

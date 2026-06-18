@@ -172,6 +172,40 @@ func (c charge) compact() map[string]any {
 
 // aggregateCharges sums billed cost grouped by service or project, sorted by
 // cost descending — the "what is driving spend" answer.
+// chargeAgg accumulates one group's totals. It is the union of what both the
+// cost (`charges --by`) and consumption (`consumption`) views need; each view's
+// projection reads only the fields it cares about.
+type chargeAgg struct {
+	consumed float64
+	cost     float64
+	count    int
+	unit     string
+	currency string
+}
+
+// groupCharges buckets charges by keyFn, summing consumed quantity and billed
+// cost, and returns the keys in cost-descending order alongside their totals —
+// the shared skeleton behind both aggregate views. unit/currency are captured
+// from each group's first member.
+func groupCharges(charges []charge, keyFn func(charge) string) ([]string, map[string]*chargeAgg) {
+	groups := map[string]*chargeAgg{}
+	var order []string
+	for _, c := range charges {
+		k := keyFn(c)
+		a, ok := groups[k]
+		if !ok {
+			a = &chargeAgg{unit: c.Unit, currency: c.Currency}
+			groups[k] = a
+			order = append(order, k)
+		}
+		a.consumed += c.Consumed
+		a.cost += c.BilledCost
+		a.count++
+	}
+	sort.Slice(order, func(i, j int) bool { return groups[order[i]].cost > groups[order[j]].cost })
+	return order, groups
+}
+
 func aggregateCharges(charges []charge, by string) ([]any, error) {
 	key := func(c charge) string { return c.Service }
 	switch by {
@@ -193,25 +227,7 @@ func aggregateCharges(charges []charge, by string) ([]any, error) {
 	default:
 		return nil, agenterrors.Newf(agenterrors.FixableByAgent, "unknown --by %q; use service, project, or region", by)
 	}
-	type agg struct {
-		cost     float64
-		count    int
-		currency string
-	}
-	groups := map[string]*agg{}
-	var order []string
-	for _, c := range charges {
-		k := key(c)
-		a, ok := groups[k]
-		if !ok {
-			a = &agg{currency: c.Currency}
-			groups[k] = a
-			order = append(order, k)
-		}
-		a.cost += c.BilledCost
-		a.count++
-	}
-	sort.Slice(order, func(i, j int) bool { return groups[order[i]].cost > groups[order[j]].cost })
+	order, groups := groupCharges(charges, key)
 	rows := make([]any, 0, len(order))
 	for _, k := range order {
 		a := groups[k]
@@ -226,27 +242,7 @@ func aggregateCharges(charges []charge, by string) ([]any, error) {
 // is consistent within a service) alongside billed cost — the "what resource,
 // in what volume, is driving the spike" view. Sorted by cost descending.
 func aggregateUsage(charges []charge) []any {
-	type agg struct {
-		consumed float64
-		cost     float64
-		count    int
-		unit     string
-		currency string
-	}
-	groups := map[string]*agg{}
-	var order []string
-	for _, c := range charges {
-		a, ok := groups[c.Service]
-		if !ok {
-			a = &agg{unit: c.Unit, currency: c.Currency}
-			groups[c.Service] = a
-			order = append(order, c.Service)
-		}
-		a.consumed += c.Consumed
-		a.cost += c.BilledCost
-		a.count++
-	}
-	sort.Slice(order, func(i, j int) bool { return groups[order[i]].cost > groups[order[j]].cost })
+	order, groups := groupCharges(charges, func(c charge) string { return c.Service })
 	rows := make([]any, 0, len(order))
 	for _, k := range order {
 		a := groups[k]

@@ -119,14 +119,15 @@ func defaults() *Options {
 		Projects: []map[string]any{
 			{
 				"id": "prj_web", "name": "web", "framework": "nextjs", "nodeVersion": "20.x",
-				"rootDirectory":  "apps/web", "outputDirectory": ".next",
-				"buildCommand":   "turbo run build", "installCommand": nil,
+				"rootDirectory": "apps/web", "outputDirectory": ".next",
+				"buildCommand": "turbo run build", "installCommand": nil,
 				"commandForIgnoringBuildStep": "npx turbo-ignore",
-				"ssoProtection":   map[string]any{"deploymentType": "preview"},
-				"trustedIps":      map[string]any{"deploymentType": "all", "addresses": []any{map[string]any{"value": "203.0.113.0/24"}}, "protectionMode": "additional"},
-				"protectionBypass": map[string]any{"abc123": map[string]any{"scope": "automation-bypass"}},
-				"link":      map[string]any{"org": "acme", "repo": "web", "type": "github", "productionBranch": "main"},
-				"updatedAt": int64(1716206800000),
+				"ssoProtection":               map[string]any{"deploymentType": "preview"},
+				"passwordProtection":          map[string]any{"deploymentType": "all"},
+				"trustedIps":                  map[string]any{"deploymentType": "all", "addresses": []any{map[string]any{"value": "203.0.113.0/24"}}, "protectionMode": "additional"},
+				"protectionBypass":            map[string]any{"abc123": map[string]any{"scope": "automation-bypass"}},
+				"link":                        map[string]any{"org": "acme", "repo": "web", "type": "github", "productionBranch": "main"},
+				"updatedAt":                   int64(1716206800000),
 				"latestDeployments": []any{map[string]any{
 					"uid": "dpl_ready", "url": "web-ready.vercel.app", "readyState": "READY", "target": "production",
 				}},

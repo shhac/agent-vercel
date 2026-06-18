@@ -49,6 +49,40 @@ func TestFirewallConfigFull(t *testing.T) {
 	}
 }
 
+func TestFirewallConfigDisabled(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	// prj_api has the firewall off, no rules — the "WAF is off" negative signal.
+	out, _, err := execCLI(t, srv.URL, "firewall", "config", "prj_api")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	m := decodeJSON(t, out)
+	if m["enabled"] != false {
+		t.Fatalf("expected enabled:false: %v", m)
+	}
+	for _, k := range []string{"custom_rules", "ip_rules", "managed_rulesets"} {
+		if _, present := m[k]; present {
+			t.Fatalf("empty %s should be omitted: %v", k, m)
+		}
+	}
+}
+
+func TestFirewallAttackStatusClear(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	// No anomalies — the common "not under attack" answer.
+	out, _, err := execCLI(t, srv.URL, "firewall", "attack-status", "prj_api")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if m := decodeJSON(t, out); m["under_attack"] != false || m["anomalies"].(float64) != 0 {
+		t.Fatalf("clear attack-status = %v; want under_attack false, 0 anomalies", m)
+	}
+}
+
 func TestFirewallAttackStatus(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New())
 	defer srv.Close()

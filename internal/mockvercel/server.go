@@ -176,10 +176,19 @@ func New(opts ...Option) http.Handler {
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"certs": certs})
 	}))
-	mux.HandleFunc("GET /v1/security/firewall/config/active", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("GET /v1/security/firewall/config/active", requireBearer(func(w http.ResponseWriter, r *http.Request) {
+		// prj_api is the "quiet" project: firewall off, no rules — the negative path.
+		if r.URL.Query().Get("projectId") == "prj_api" {
+			writeJSON(w, http.StatusOK, map[string]any{"firewallEnabled": false, "version": 1, "rules": []any{}, "ips": []any{}, "managedRules": map[string]any{}})
+			return
+		}
 		writeJSON(w, http.StatusOK, o.FirewallConfig)
 	}))
-	mux.HandleFunc("GET /v1/security/firewall/attack-status", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+	mux.HandleFunc("GET /v1/security/firewall/attack-status", requireBearer(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("projectId") == "prj_api" {
+			writeJSON(w, http.StatusOK, map[string]any{"anomalies": []any{}})
+			return
+		}
 		writeJSON(w, http.StatusOK, o.AttackStatus)
 	}))
 	mux.HandleFunc("GET /v1/security/firewall/bypass", requireBearer(func(w http.ResponseWriter, _ *http.Request) {

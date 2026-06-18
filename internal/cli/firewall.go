@@ -48,16 +48,10 @@ func registerFirewall(root *cobra.Command, g *GlobalFlags) {
 		Short: "List the firewall system-bypass rules (sources allowed to skip the WAF)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			r, err := resolveClient(g)
-			if err != nil {
-				return err
-			}
-			raw, err := r.client.FirewallBypass(cmd.Context(), args[0])
-			if err != nil {
-				return err
-			}
 			// Shape is uncertain (object or array of rules); print it raw.
-			return printRaw(g, raw)
+			return emitRaw(g, func(c *vercel.Client) (json.RawMessage, error) {
+				return c.FirewallBypass(cmd.Context(), args[0])
+			})
 		},
 	}
 

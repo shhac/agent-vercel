@@ -98,6 +98,22 @@ func emitOne(g *GlobalFlags, fetch func(*vercel.Client) (json.RawMessage, error)
 	return getOne(g, raw, compact)
 }
 
+// emitRaw resolves the client, fetches a single resource via fetch, and prints
+// it raw. The counterpart to emitOne for endpoints whose payload shape is
+// variable/uncertain and has no compact projection (firewall bypass, project
+// routes, domain transfer); --full is moot since the output is already raw.
+func emitRaw(g *GlobalFlags, fetch func(*vercel.Client) (json.RawMessage, error)) error {
+	r, err := resolveClient(g)
+	if err != nil {
+		return err
+	}
+	raw, err := fetch(r.client)
+	if err != nil {
+		return err
+	}
+	return printRaw(g, raw)
+}
+
 // addPageFlags registers the shared pagination flags on a list command,
 // returning pointers to the cursor and all values.
 func addPageFlags(cmd *cobra.Command) (cursor *string, all *bool) {
