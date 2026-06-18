@@ -74,14 +74,12 @@ func resolveClient(g *GlobalFlags) (*resolved, error) {
 // credential it belongs to (nil for an env-provided token).
 func resolveToken(g *GlobalFlags, creds *credential.Credentials) (string, *credential.Auth, error) {
 	if g.Auth != "" {
-		for i := range creds.Auths {
-			if creds.Auths[i].Label == g.Auth {
-				a := &creds.Auths[i]
-				if credential.IsPlaceholder(a.Secret) {
-					return "", nil, missingSecretErr(a.Label)
-				}
-				return a.Secret, a, nil
-			}
+		a, err := findAuthByLabel(creds, g.Auth)
+		if err != nil {
+			return "", nil, err
+		}
+		if a != nil {
+			return a.Secret, a, nil
 		}
 		return "", nil, agenterrors.Newf(agenterrors.FixableByAgent, "no stored credential labeled %q", g.Auth).
 			WithHint("run 'agent-vercel auth list' to see stored labels")
@@ -90,18 +88,34 @@ func resolveToken(g *GlobalFlags, creds *credential.Credentials) (string, *crede
 		return env, nil, nil
 	}
 	if creds.DefaultAuth != "" {
-		for i := range creds.Auths {
-			if creds.Auths[i].Label == creds.DefaultAuth {
-				a := &creds.Auths[i]
-				if credential.IsPlaceholder(a.Secret) {
-					return "", nil, missingSecretErr(a.Label)
-				}
-				return a.Secret, a, nil
-			}
+		a, err := findAuthByLabel(creds, creds.DefaultAuth)
+		if err != nil {
+			return "", nil, err
+		}
+		if a != nil {
+			return a.Secret, a, nil
 		}
 	}
 	return "", nil, agenterrors.New("no Vercel credential configured", agenterrors.FixableByHuman).
 		WithHint("set VERCEL_TOKEN and run 'agent-vercel auth add', or pass --auth <label>")
+}
+
+// findAuthByLabel returns the stored credential with the given label, or
+// (nil, nil) when none matches. It returns a fixable_by:human error when a
+// match exists but its secret is only a Keychain placeholder (the secret could
+// not be hydrated), so both the explicit-label and default-label paths report
+// the missing secret identically.
+func findAuthByLabel(creds *credential.Credentials, label string) (*credential.Auth, error) {
+	for i := range creds.Auths {
+		if creds.Auths[i].Label == label {
+			a := &creds.Auths[i]
+			if credential.IsPlaceholder(a.Secret) {
+				return nil, missingSecretErr(a.Label)
+			}
+			return a, nil
+		}
+	}
+	return nil, nil
 }
 
 func missingSecretErr(label string) error {

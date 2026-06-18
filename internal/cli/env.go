@@ -328,42 +328,55 @@ func envDiffCmd(g *GlobalFlags) *cobra.Command {
 					}
 				}
 			}
-			keys := make([]string, 0, len(byKey))
-			for k := range byKey {
-				keys = append(keys, k)
-			}
-			sort.Strings(keys)
-
-			rows := make([]any, 0)
-			for _, k := range keys {
-				va, oka := byKey[k][a]
-				vb, okb := byKey[k][b]
-				status := ""
-				switch {
-				case oka && !okb:
-					status = "only_" + a
-				case okb && !oka:
-					status = "only_" + b
-				case va == vb:
-					status = "same"
-				default:
-					status = "different"
-				}
-				if status == "same" {
-					continue // diff shows differences only
-				}
-				row := map[string]any{"key": k, "status": status}
-				if oka {
-					row[a] = va
-				}
-				if okb {
-					row[b] = vb
-				}
-				rows = append(rows, row)
-			}
-			return emitList(g, rows, nil)
+			return emitList(g, envDiffRows(byKey, a, b), nil)
 		},
 	}
 	cmd.Flags().StringVar(&environments, "environments", "production,preview", "two environments to compare, comma-separated")
 	return cmd
+}
+
+// envDiffStatus classifies a key across two environments a and b given each
+// side's value and presence: "only_<env>" when present on just one side,
+// "same" when both values match, "different" otherwise.
+func envDiffStatus(va string, oka bool, vb string, okb bool, a, b string) string {
+	switch {
+	case oka && !okb:
+		return "only_" + a
+	case okb && !oka:
+		return "only_" + b
+	case va == vb:
+		return "same"
+	default:
+		return "different"
+	}
+}
+
+// envDiffRows builds the sorted diff output for two environments from the
+// per-key presence/values, emitting only the keys that differ (present on one
+// side only, or differing value) — "same" keys are dropped.
+func envDiffRows(byKey map[string]map[string]string, a, b string) []any {
+	keys := make([]string, 0, len(byKey))
+	for k := range byKey {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	rows := make([]any, 0)
+	for _, k := range keys {
+		va, oka := byKey[k][a]
+		vb, okb := byKey[k][b]
+		status := envDiffStatus(va, oka, vb, okb, a, b)
+		if status == "same" {
+			continue
+		}
+		row := map[string]any{"key": k, "status": status}
+		if oka {
+			row[a] = va
+		}
+		if okb {
+			row[b] = vb
+		}
+		rows = append(rows, row)
+	}
+	return rows
 }
