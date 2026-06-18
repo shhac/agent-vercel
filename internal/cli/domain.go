@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"net/url"
+	"time"
 
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
 	"github.com/spf13/cobra"
@@ -116,8 +117,57 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 		},
 	}
 
-	cmd.AddCommand(list, get, inspect, domainRecordsCmd(g), cert, domainAddCmd(g), domainRmCmd(g), domainVerifyCmd(g))
+	cmd.AddCommand(list, get, inspect, domainRecordsCmd(g), cert, domainCertsCmd(g), domainAddCmd(g), domainRmCmd(g), domainVerifyCmd(g))
 	root.AddCommand(cmd)
+}
+
+func domainCertsCmd(g *GlobalFlags) *cobra.Command {
+	var expiring int
+	cmd := &cobra.Command{
+		Use:   "certs",
+		Short: "List the scope's TLS certificates and their expiry (bulk renewal triage)",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			items, err := r.client.ListCerts(cmd.Context(), nil)
+			if err != nil {
+				return err
+			}
+			if cmd.Flags().Changed("expiring") {
+				items = filterExpiringCerts(items, expiring)
+			}
+			rows, err := compactRows(items, g.Full, compactCert)
+			if err != nil {
+				return err
+			}
+			return emitList(g, rows, nil)
+		},
+	}
+	cmd.Flags().IntVar(&expiring, "expiring", 0, "only certs expiring within this many days (0 = already expired/expiring today)")
+	return cmd
+}
+
+// filterExpiringCerts keeps certs whose expiry is at or before now + days
+// (days may be 0 to surface only already-expired/expiring-today certs),
+// client-side — the certs endpoint has no expiry filter.
+func filterExpiringCerts(items []json.RawMessage, days int) []json.RawMessage {
+	cutoff := time.Now().AddDate(0, 0, days).UnixMilli()
+	out := make([]json.RawMessage, 0, len(items))
+	for _, raw := range items {
+		var c struct {
+			ExpiresAt int64 `json:"expiresAt"`
+		}
+		if json.Unmarshal(raw, &c) != nil || c.ExpiresAt == 0 {
+			continue
+		}
+		if c.ExpiresAt <= cutoff {
+			out = append(out, raw)
+		}
+	}
+	return out
 }
 
 // domainRecordsCmd is the `domain records` group: list/add/rm DNS records.

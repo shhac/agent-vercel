@@ -92,6 +92,7 @@ distinct from the agent-vercel access token (never readable).
 | `domain add <project> <domain>` * | `--redirect --git-branch` |
 | `domain rm <project> <domain>` * | |
 | `domain cert <id>` | cert expiry / autoRenew / cns |
+| `domain certs` | `--expiring <days>` filters to certs expiring within N days (0 = expired); bulk renewal triage. Spec-plausible, not live-validated — falls back to `domain cert <id>` if the list 404s |
 
 ## alias
 

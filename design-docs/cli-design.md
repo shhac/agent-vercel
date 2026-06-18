@@ -106,6 +106,7 @@ domain is a possible later addition.
 | `domain add <project> <domain>` | `--redirect`, `--git-branch` | `--yes` | |
 | `domain rm <project> <domain>` | | `--yes` | |
 | `domain cert <id>` | | | `GET /v8/certs/{id}` (expiry, autoRenew, cns) |
+| `domain certs` | `--expiring <days>` | | NDJSON; the scope's certs for bulk expiry/renewal triage; `--expiring` filters to certs expiring within N days (0 = already expired). `GET /v9/certs`. **Spec-plausible, not live-validated** — Vercel may not expose a scope-wide certs list (cf. the absent scope-wide alias list); if it 404s, use `domain cert <id>` per-id |
 | `alias list <deployment>` | `--cursor`, `--all` | | `GET /v2/deployments/{id}/aliases`; surfaces `protection_bypass`. (No scope-wide alias-list endpoint exists — `/v4/aliases` is in the OpenAPI spec but 404s live.) |
 | `alias set <deployment> <alias>` | | `--yes` | `POST /v2/deployments/{id}/aliases` |
 | `alias rm <alias>` | | `--yes` | |

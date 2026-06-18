@@ -214,7 +214,10 @@ func defaults() *Options {
 			{"id": "rec_2", "type": "CNAME", "name": "www", "value": "cname.vercel-dns.com", "ttl": 60},
 		},
 		Certs: map[string]map[string]any{
+			// cert_1 expires in the past (an already-expired cert, for --expiring triage)…
 			"cert_1": {"id": "cert_1", "createdAt": int64(1716000000000), "expiresAt": int64(1763200000000), "autoRenew": true, "cns": []any{"example.com", "www.example.com"}},
+			// …cert_2 expires far in the future.
+			"cert_2": {"id": "cert_2", "createdAt": int64(1716000000000), "expiresAt": int64(2000000000000), "autoRenew": true, "cns": []any{"app.example.com"}},
 		},
 		Aliases: []map[string]any{
 			{"uid": "alias_1", "alias": "example.com", "created": "2026-05-01T10:00:00.000Z"},
@@ -380,6 +383,18 @@ func New(opts ...Option) http.Handler {
 			"records":    o.DomainRecords,
 			"pagination": map[string]any{"count": len(o.DomainRecords)},
 		})
+	}))
+	mux.HandleFunc("GET /v9/certs", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		ids := make([]string, 0, len(o.Certs))
+		for id := range o.Certs {
+			ids = append(ids, id)
+		}
+		sort.Strings(ids)
+		certs := make([]map[string]any, 0, len(ids))
+		for _, id := range ids {
+			certs = append(certs, o.Certs[id])
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"certs": certs})
 	}))
 	mux.HandleFunc("GET /v8/certs/{id}", requireBearer(func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")

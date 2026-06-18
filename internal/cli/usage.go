@@ -35,7 +35,7 @@ CORE DOMAINS (see design-docs/cli-design.md)
   deployment   list | get | checks | logs | runtime-logs | current | promote* | rollback* | cancel* | redeploy*
   project      list | get | crons | custom-environments
   env          list | diff | get | pull | set* | rm*
-  domain       list | get | inspect | records | cert | verify* | add* | rm*
+  domain       list | get | inspect | records | cert <id> | certs | verify* | add* | rm*
   alias        list | set* | rm* | bypass*
   billing      charges [--by service|project]   (what is driving spend)
   webhook      list [--project]                  (which events fire where)

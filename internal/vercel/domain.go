@@ -35,6 +35,19 @@ func (c *Client) GetCert(ctx context.Context, id string) (json.RawMessage, error
 	return c.Get(ctx, "/v8/certs/"+url.PathEscape(id), nil)
 }
 
+// ListCerts — GET /v9/certs. The scope's TLS certificates, for bulk
+// expiry/renewal triage. The payload may be a bare array or wrapped under
+// "certs". Spec-plausible but not live-validated; Vercel may not expose a
+// scope-wide certs list (cf. the absent scope-wide alias list) — callers that
+// 404 should fall back to GetCert by id.
+func (c *Client) ListCerts(ctx context.Context, q url.Values) ([]json.RawMessage, error) {
+	raw, err := c.Get(ctx, "/v9/certs", q)
+	if err != nil {
+		return nil, err
+	}
+	return decodeKeyedArray(raw, "certs"), nil
+}
+
 // DeploymentAliases — GET /v2/deployments/{id}/aliases.
 func (c *Client) DeploymentAliases(ctx context.Context, idOrURL string, q url.Values) ([]json.RawMessage, Page, error) {
 	return c.listRaw(ctx, "/v2/deployments/"+url.PathEscape(idOrURL)+"/aliases", "aliases", q)
