@@ -71,11 +71,11 @@ func TestBillingChargesByRegion(t *testing.T) {
 	}
 }
 
-func TestBillingUsageByService(t *testing.T) {
+func TestBillingConsumptionByService(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New())
 	defer srv.Close()
 
-	out, _, err := execCLI(t, srv.URL, "billing", "usage")
+	out, _, err := execCLI(t, srv.URL, "billing", "consumption")
 	if err != nil {
 		t.Fatalf("usage: %v", err)
 	}

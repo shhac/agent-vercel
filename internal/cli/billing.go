@@ -47,7 +47,7 @@ func registerBilling(root *cobra.Command, g *GlobalFlags) {
 
 	var ufrom, uto string
 	usage := &cobra.Command{
-		Use:   "usage",
+		Use:   "consumption",
 		Short: "Aggregate consumed quantity by service (volume + unit, not just $) — what resource is the spike",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {

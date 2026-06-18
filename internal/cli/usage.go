@@ -39,7 +39,7 @@ CORE DOMAINS (see design-docs/cli-design.md)
   alias        list | set* | rm* | bypass*
   firewall     config <project> | attack-status <project> | bypass <project>   (WAF triage)
   cache        purge <project> --tag <t>*                  (invalidate CDN cache by tag)
-  billing      charges [--by service|project|region] | usage   (what is driving spend / consumed volume)
+  billing      charges [--by service|project|region] | consumption   (what is driving spend / consumed volume)
   webhook      list [--project]                  (which events fire where)
   drains       list [--project] | get <id>      (where log/trace/analytics data is shipped)
   edge-config  list | items <id>                  (live non-secret key/value config)
