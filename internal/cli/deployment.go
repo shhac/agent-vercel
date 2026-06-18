@@ -8,6 +8,7 @@ import (
 	"time"
 
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
+	"github.com/shhac/agent-vercel/internal/vercel"
 	"github.com/spf13/cobra"
 )
 
@@ -65,9 +66,8 @@ func deploymentListCmd(g *GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			items, next, err := fetchPaged(q, *cursor, *all, func(q url.Values) ([]json.RawMessage, *int64, error) {
-				it, p, e := r.client.ListDeployments(cmd.Context(), q)
-				return it, p.Next, e
+			items, next, err := fetchPaged(q, *cursor, *all, func(q url.Values) ([]json.RawMessage, vercel.Page, error) {
+				return r.client.ListDeployments(cmd.Context(), q)
 			})
 			if err != nil {
 				return err
@@ -101,15 +101,9 @@ func deploymentGetCmd(g *GlobalFlags) *cobra.Command {
 		Short: "Get one deployment",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			r, err := resolveClient(g)
-			if err != nil {
-				return err
-			}
-			raw, err := r.client.GetDeployment(cmd.Context(), cleanRef(args[0]))
-			if err != nil {
-				return err
-			}
-			return getOne(g, raw, compactDeployment)
+			return emitOne(g, func(c *vercel.Client) (json.RawMessage, error) {
+				return c.GetDeployment(cmd.Context(), cleanRef(args[0]))
+			}, compactDeployment)
 		},
 	}
 }
@@ -273,17 +267,28 @@ func setTimeFilter(q url.Values, key, s string) error {
 	if s == "" {
 		return nil
 	}
+	t, ok := parseUserTime(s)
+	if !ok {
+		return agenterrors.Newf(agenterrors.FixableByAgent, "invalid time %q; use a duration (24h, 7d) or date (2006-01-02)", s)
+	}
+	q.Set(key, strconv.FormatInt(t.UTC().UnixMilli(), 10))
+	return nil
+}
+
+// parseUserTime resolves a user-supplied time expression — a relative duration
+// (24h, 7d, 2w) interpreted as "ago", an RFC3339 timestamp, or a 2006-01-02
+// date — to an absolute instant. ok is false when s matches none of these.
+// Callers handle empty input and their own error wording.
+func parseUserTime(s string) (time.Time, bool) {
 	if ms, ok := relativeMS(s); ok {
-		q.Set(key, strconv.FormatInt(ms, 10))
-		return nil
+		return time.UnixMilli(ms), true
 	}
 	for _, layout := range []string{time.RFC3339, "2006-01-02"} {
 		if t, err := time.Parse(layout, s); err == nil {
-			q.Set(key, strconv.FormatInt(t.UTC().UnixMilli(), 10))
-			return nil
+			return t, true
 		}
 	}
-	return agenterrors.Newf(agenterrors.FixableByAgent, "invalid time %q; use a duration (24h, 7d) or date (2006-01-02)", s)
+	return time.Time{}, false
 }
 
 func relativeMS(s string) (int64, bool) {

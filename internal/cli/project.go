@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
+	"github.com/shhac/agent-vercel/internal/vercel"
 	"github.com/spf13/cobra"
 )
 
@@ -34,9 +35,8 @@ func registerProject(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			return emitPaged(g, q, *cursor, *all, func(q url.Values) ([]json.RawMessage, *int64, error) {
-				it, p, e := r.client.ListProjects(cmd.Context(), q)
-				return it, p.Next, e
+			return emitPaged(g, q, *cursor, *all, func(q url.Values) ([]json.RawMessage, vercel.Page, error) {
+				return r.client.ListProjects(cmd.Context(), q)
 			}, compactProject)
 		},
 	}
@@ -49,15 +49,9 @@ func registerProject(root *cobra.Command, g *GlobalFlags) {
 		Short: "Get one project",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			r, err := resolveClient(g)
-			if err != nil {
-				return err
-			}
-			raw, err := r.client.GetProject(cmd.Context(), args[0])
-			if err != nil {
-				return err
-			}
-			return getOne(g, raw, compactProject)
+			return emitOne(g, func(c *vercel.Client) (json.RawMessage, error) {
+				return c.GetProject(cmd.Context(), args[0])
+			}, compactProject)
 		},
 	}
 
@@ -66,15 +60,9 @@ func registerProject(root *cobra.Command, g *GlobalFlags) {
 		Short: "Show the cron jobs a project runs and whether crons are enabled",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			r, err := resolveClient(g)
-			if err != nil {
-				return err
-			}
-			raw, err := r.client.ProjectCrons(cmd.Context(), args[0])
-			if err != nil {
-				return err
-			}
-			return getOne(g, raw, func(raw json.RawMessage) (map[string]any, error) {
+			return emitOne(g, func(c *vercel.Client) (json.RawMessage, error) {
+				return c.ProjectCrons(cmd.Context(), args[0])
+			}, func(raw json.RawMessage) (map[string]any, error) {
 				m, err := compactCrons(raw)
 				if err != nil {
 					return nil, err

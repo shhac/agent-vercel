@@ -32,32 +32,41 @@ func envPullCmd(g *GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			keys := make([]string, 0, len(envs))
-			vals := map[string]string{}
-			for _, e := range envs {
-				if !targets(e)[environment] {
-					continue
-				}
-				if _, seen := vals[e.Key]; !seen {
-					keys = append(keys, e.Key)
-				}
-				vals[e.Key] = e.Value
-			}
-			sort.Strings(keys)
-			var b strings.Builder
-			for _, k := range keys {
-				b.WriteString(k + "=" + dotenvQuote(vals[k]) + "\n")
-			}
-			if err := os.WriteFile(out, []byte(b.String()), 0o600); err != nil {
+			body, count := buildDotenv(envs, environment)
+			if err := os.WriteFile(out, []byte(body), 0o600); err != nil {
 				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
 			}
-			return printSingle(g, map[string]any{"written": out, "count": len(keys), "environment": environment})
+			return printSingle(g, map[string]any{"written": out, "count": count, "environment": environment})
 		},
 	}
 	cmd.Flags().StringVar(&environment, "environment", "development", "which environment to pull (production|preview|development)")
 	cmd.Flags().StringVar(&out, "out", ".env", "output dotenv file path")
 	cmd.Flags().StringVar(&gitBranch, "git-branch", "", "preview branch to pull")
 	return cmd
+}
+
+// buildDotenv renders the dotenv body for one environment from a project's env
+// vars: keys targeting environment, sorted, last value winning on duplicates.
+// Returns the file body and the number of keys written. Pure, so the dedup /
+// quoting / last-write-wins logic is unit-testable without I/O.
+func buildDotenv(envs []rawEnv, environment string) (string, int) {
+	keys := make([]string, 0, len(envs))
+	vals := map[string]string{}
+	for _, e := range envs {
+		if !targets(e)[environment] {
+			continue
+		}
+		if _, seen := vals[e.Key]; !seen {
+			keys = append(keys, e.Key)
+		}
+		vals[e.Key] = e.Value
+	}
+	sort.Strings(keys)
+	var b strings.Builder
+	for _, k := range keys {
+		b.WriteString(k + "=" + dotenvQuote(vals[k]) + "\n")
+	}
+	return b.String(), len(keys)
 }
 
 // dotenvQuote double-quotes a value and escapes backslashes, quotes, and

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/shhac/agent-vercel/internal/output"
+	"github.com/shhac/agent-vercel/internal/vercel"
 	"github.com/spf13/cobra"
 )
 
@@ -17,9 +18,10 @@ import (
 // knows the result was truncated.
 const allPagesCap = 1000
 
-// pageFunc fetches one page for a list endpoint and returns the page's items and
-// the next cursor (nil when there are no more pages).
-type pageFunc func(q url.Values) ([]json.RawMessage, *int64, error)
+// pageFunc fetches one page for a list endpoint, returning the page's items and
+// the Vercel pagination block. A bound client list method (e.g.
+// r.client.ListProjects) satisfies this directly — fetchPaged reads .Next.
+type pageFunc func(q url.Values) ([]json.RawMessage, vercel.Page, error)
 
 // fetchPaged drives a paginated list. With all=false it fetches one page
 // (optionally starting at cursor) and returns that page's next cursor so the
@@ -32,21 +34,21 @@ func fetchPaged(q url.Values, cursor string, all bool, fetch pageFunc) ([]json.R
 	}
 	var acc []json.RawMessage
 	for {
-		items, next, err := fetch(q)
+		items, page, err := fetch(q)
 		if err != nil {
 			return nil, nil, err
 		}
 		acc = append(acc, items...)
 		if !all {
-			return acc, next, nil
+			return acc, page.Next, nil
 		}
-		if next == nil {
+		if page.Next == nil {
 			return acc, nil, nil
 		}
 		if len(acc) >= allPagesCap {
-			return acc, next, nil
+			return acc, page.Next, nil
 		}
-		q.Set("until", strconv.FormatInt(*next, 10))
+		q.Set("until", strconv.FormatInt(*page.Next, 10))
 	}
 }
 
@@ -78,6 +80,22 @@ func emitRows(g *GlobalFlags, items []json.RawMessage, compact func(json.RawMess
 		return err
 	}
 	return emitList(g, rows, nil)
+}
+
+// emitOne resolves the client, fetches a single resource via fetch, and prints
+// it through getOne (the raw payload under --full, else the compact projection).
+// The single-resource counterpart to emitPaged/emitRows; the fetch closure keeps
+// the varying client method at the call site.
+func emitOne(g *GlobalFlags, fetch func(*vercel.Client) (json.RawMessage, error), compact func(json.RawMessage) (map[string]any, error)) error {
+	r, err := resolveClient(g)
+	if err != nil {
+		return err
+	}
+	raw, err := fetch(r.client)
+	if err != nil {
+		return err
+	}
+	return getOne(g, raw, compact)
 }
 
 // addPageFlags registers the shared pagination flags on a list command,

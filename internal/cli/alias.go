@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/url"
 
+	"github.com/shhac/agent-vercel/internal/vercel"
 	"github.com/spf13/cobra"
 )
 
@@ -25,9 +26,8 @@ func registerAlias(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			return emitPaged(g, url.Values{}, *listCursor, *listAll, func(q url.Values) ([]json.RawMessage, *int64, error) {
-				it, p, e := r.client.DeploymentAliases(cmd.Context(), cleanRef(args[0]), q)
-				return it, p.Next, e
+			return emitPaged(g, url.Values{}, *listCursor, *listAll, func(q url.Values) ([]json.RawMessage, vercel.Page, error) {
+				return r.client.DeploymentAliases(cmd.Context(), cleanRef(args[0]), q)
 			}, compactAlias)
 		},
 	}

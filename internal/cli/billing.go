@@ -39,30 +39,22 @@ func registerBilling(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			charges := make([]charge, 0, len(items))
-			for _, raw := range items {
-				c, err := parseCharge(raw)
-				if err != nil {
-					return err
-				}
-				charges = append(charges, c)
-			}
 			if by != "" {
+				charges := make([]charge, 0, len(items))
+				for _, raw := range items {
+					c, err := parseCharge(raw)
+					if err != nil {
+						return err
+					}
+					charges = append(charges, c)
+				}
 				rows, err := aggregateCharges(charges, by)
 				if err != nil {
 					return err
 				}
 				return emitList(g, rows, nil)
 			}
-			rows := make([]any, 0, len(charges))
-			for i := range items {
-				if g.Full {
-					rows = append(rows, items[i])
-				} else {
-					rows = append(rows, charges[i].compact())
-				}
-			}
-			return emitList(g, rows, nil)
+			return emitRows(g, items, compactCharge)
 		},
 	}
 	f := charges.Flags()
@@ -112,6 +104,17 @@ func parseCharge(raw json.RawMessage) (charge, error) {
 		BilledCost: c.BilledCost, Currency: c.BillingCurrency,
 		PeriodStart: c.ChargePeriodStart, PeriodEnd: c.ChargePeriodEnd,
 	}, nil
+}
+
+// compactCharge is the free-function projection used on the list path, matching
+// the package's canonical compactX(json.RawMessage) shape so the charges list
+// flows through compactRows/emitRows like every other resource.
+func compactCharge(raw json.RawMessage) (map[string]any, error) {
+	c, err := parseCharge(raw)
+	if err != nil {
+		return nil, err
+	}
+	return c.compact(), nil
 }
 
 func (c charge) compact() map[string]any {
@@ -179,13 +182,9 @@ func toISO(s string, def time.Time) (string, error) {
 	if s == "" {
 		return def.UTC().Format(time.RFC3339), nil
 	}
-	if ms, ok := relativeMS(s); ok {
-		return time.UnixMilli(ms).UTC().Format(time.RFC3339), nil
+	t, ok := parseUserTime(s)
+	if !ok {
+		return "", agenterrors.Newf(agenterrors.FixableByAgent, "invalid date %q; use a date (2006-01-02), RFC3339, or a duration like 30d", s)
 	}
-	for _, layout := range []string{time.RFC3339, "2006-01-02"} {
-		if t, err := time.Parse(layout, s); err == nil {
-			return t.UTC().Format(time.RFC3339), nil
-		}
-	}
-	return "", agenterrors.Newf(agenterrors.FixableByAgent, "invalid date %q; use a date (2006-01-02), RFC3339, or a duration like 30d", s)
+	return t.UTC().Format(time.RFC3339), nil
 }

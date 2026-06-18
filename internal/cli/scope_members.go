@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
+	"github.com/shhac/agent-vercel/internal/vercel"
 	"github.com/spf13/cobra"
 )
 
@@ -56,9 +57,8 @@ func scopeMembersCmd(g *GlobalFlags) *cobra.Command {
 			if limit > 0 {
 				q.Set("limit", strconv.Itoa(limit))
 			}
-			return emitPaged(g, q, *cursor, *all, func(q url.Values) ([]json.RawMessage, *int64, error) {
-				it, p, e := r.client.TeamMembers(cmd.Context(), teamID, q)
-				return it, p.Next, e
+			return emitPaged(g, q, *cursor, *all, func(q url.Values) ([]json.RawMessage, vercel.Page, error) {
+				return r.client.TeamMembers(cmd.Context(), teamID, q)
 			}, compactMember)
 		},
 	}
@@ -83,9 +83,8 @@ func scopeMemberCmd(g *GlobalFlags) *cobra.Command {
 			}
 			// The team-members endpoint has no per-member GET, so fetch the
 			// roster (following pages) and match client-side.
-			items, _, err := fetchPaged(url.Values{}, "", true, func(q url.Values) ([]json.RawMessage, *int64, error) {
-				it, p, e := r.client.TeamMembers(cmd.Context(), teamID, q)
-				return it, p.Next, e
+			items, _, err := fetchPaged(url.Values{}, "", true, func(q url.Values) ([]json.RawMessage, vercel.Page, error) {
+				return r.client.TeamMembers(cmd.Context(), teamID, q)
 			})
 			if err != nil {
 				return err

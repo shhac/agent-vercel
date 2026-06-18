@@ -6,6 +6,7 @@ import (
 	"time"
 
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
+	"github.com/shhac/agent-vercel/internal/vercel"
 	"github.com/spf13/cobra"
 )
 
@@ -27,9 +28,8 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			return emitPaged(g, url.Values{}, *listCursor, *listAll, func(q url.Values) ([]json.RawMessage, *int64, error) {
-				it, p, e := r.client.ListDomains(cmd.Context(), q)
-				return it, p.Next, e
+			return emitPaged(g, url.Values{}, *listCursor, *listAll, func(q url.Values) ([]json.RawMessage, vercel.Page, error) {
+				return r.client.ListDomains(cmd.Context(), q)
 			}, compactDomain)
 		},
 	}
@@ -40,15 +40,9 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 		Short: "Get one domain (verification, nameservers, verified state)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			r, err := resolveClient(g)
-			if err != nil {
-				return err
-			}
-			raw, err := r.client.GetDomain(cmd.Context(), args[0])
-			if err != nil {
-				return err
-			}
-			return getOne(g, raw, compactDomain)
+			return emitOne(g, func(c *vercel.Client) (json.RawMessage, error) {
+				return c.GetDomain(cmd.Context(), args[0])
+			}, compactDomain)
 		},
 	}
 
@@ -97,15 +91,9 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 		Short: "Get a certificate (expiry, autoRenew, covered names)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			r, err := resolveClient(g)
-			if err != nil {
-				return err
-			}
-			raw, err := r.client.GetCert(cmd.Context(), args[0])
-			if err != nil {
-				return err
-			}
-			return getOne(g, raw, compactCert)
+			return emitOne(g, func(c *vercel.Client) (json.RawMessage, error) {
+				return c.GetCert(cmd.Context(), args[0])
+			}, compactCert)
 		},
 	}
 
@@ -179,9 +167,8 @@ func domainRecordsCmd(g *GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return emitPaged(g, url.Values{}, *cursor, *all, func(q url.Values) ([]json.RawMessage, *int64, error) {
-				it, p, e := r.client.DomainRecords(cmd.Context(), args[0], q)
-				return it, p.Next, e
+			return emitPaged(g, url.Values{}, *cursor, *all, func(q url.Values) ([]json.RawMessage, vercel.Page, error) {
+				return r.client.DomainRecords(cmd.Context(), args[0], q)
 			}, compactRecord)
 		},
 	}
