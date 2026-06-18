@@ -48,6 +48,26 @@ func (c *Client) ListCerts(ctx context.Context, q url.Values) ([]json.RawMessage
 	return decodeKeyedArray(raw, "certs"), nil
 }
 
+// ProjectDomainsByApex — GET /v1/domains/{domain}/project-domains. The reverse
+// map: every project domain using this apex (with projectId, redirect, verified
+// state) — for "which project is this domain on / is it on the wrong one"
+// triage. The payload may be a bare array or wrapped under "domains".
+// Spec-documented; not live-validated.
+func (c *Client) ProjectDomainsByApex(ctx context.Context, domain string) ([]json.RawMessage, error) {
+	raw, err := c.Get(ctx, "/v1/domains/"+url.PathEscape(domain)+"/project-domains", nil)
+	if err != nil {
+		return nil, err
+	}
+	return decodeKeyedArray(raw, "domains"), nil
+}
+
+// DomainTransfer — GET /v1/registrar/domains/{domain}/transfer. Registration and
+// transfer status (the "why is my transfer stuck" signal). Spec-documented; not
+// live-validated.
+func (c *Client) DomainTransfer(ctx context.Context, domain string) (json.RawMessage, error) {
+	return c.Get(ctx, "/v1/registrar/domains/"+url.PathEscape(domain)+"/transfer", nil)
+}
+
 // DeploymentAliases — GET /v2/deployments/{id}/aliases.
 func (c *Client) DeploymentAliases(ctx context.Context, idOrURL string, q url.Values) ([]json.RawMessage, Page, error) {
 	return c.listRaw(ctx, "/v2/deployments/"+url.PathEscape(idOrURL)+"/aliases", "aliases", q)

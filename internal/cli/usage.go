@@ -35,7 +35,7 @@ CORE DOMAINS (see design-docs/cli-design.md)
   deployment   list | get | checks | routes | logs | runtime-logs | current | promote* | rollback* | cancel* | redeploy*
   project      list | get | crons | custom-environments | protection | routes
   env          list | diff | get | pull | shared list/get | set* | rm*
-  domain       list | get | inspect | records | cert list/get | verify* | add* | rm*
+  domain       list | get | inspect | records | cert list/get | projects | transfer | verify* | add* | rm*
   alias        list | set* | rm* | bypass*
   firewall     config <project> | attack-status <project> | bypass <project>   (WAF triage)
   cache        purge <project> --tag <t>*                  (invalidate CDN cache by tag)

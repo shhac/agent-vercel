@@ -149,6 +149,12 @@ func New(opts ...Option) http.Handler {
 		}
 		writeErr(w, http.StatusNotFound, "not_found", "domain not found: "+name)
 	}))
+	mux.HandleFunc("GET /v1/domains/{domain}/project-domains", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{"domains": o.ProjectDomains})
+	}))
+	mux.HandleFunc("GET /v1/registrar/domains/{domain}/transfer", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, o.DomainTransfer)
+	}))
 	mux.HandleFunc("GET /v6/domains/{domain}/config", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, o.DomainConfig)
 	}))

@@ -103,7 +103,41 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 		},
 	}
 
-	cmd.AddCommand(list, get, inspect, domainRecordsCmd(g), domainCertCmd(g), domainAddCmd(g), domainRmCmd(g), domainVerifyCmd(g))
+	projects := &cobra.Command{
+		Use:   "projects <domain>",
+		Short: "List the projects a domain (apex) is attached to (wrong-project / conflict triage)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			items, err := r.client.ProjectDomainsByApex(cmd.Context(), args[0])
+			if err != nil {
+				return err
+			}
+			return emitRows(g, items, compactProjectDomain)
+		},
+	}
+
+	transfer := &cobra.Command{
+		Use:   "transfer <domain>",
+		Short: "Show a domain's registration / transfer status (registrar)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			raw, err := r.client.DomainTransfer(cmd.Context(), args[0])
+			if err != nil {
+				return err
+			}
+			return printRaw(g, raw) // small registrar status object; shape varies
+		},
+	}
+
+	cmd.AddCommand(list, get, inspect, domainRecordsCmd(g), domainCertCmd(g), projects, transfer, domainAddCmd(g), domainRmCmd(g), domainVerifyCmd(g))
 	root.AddCommand(cmd)
 }
 
@@ -363,6 +397,29 @@ func compactDomain(raw json.RawMessage) (map[string]any, error) {
 		m["nameservers"] = d.Nameservers
 	}
 	putIf(m, "expires", msToRFC3339(d.ExpiresAt))
+	return m, nil
+}
+
+// compactProjectDomain projects one entry of the apex→project reverse map: the
+// domain name, the project it is on, verified state, and any redirect binding.
+func compactProjectDomain(raw json.RawMessage) (map[string]any, error) {
+	var d struct {
+		Name               string `json:"name"`
+		ProjectID          string `json:"projectId"`
+		Verified           bool   `json:"verified"`
+		Redirect           string `json:"redirect"`
+		RedirectStatusCode int    `json:"redirectStatusCode"`
+		GitBranch          string `json:"gitBranch"`
+	}
+	if err := json.Unmarshal(raw, &d); err != nil {
+		return nil, wrapAgent(err)
+	}
+	m := map[string]any{"name": d.Name, "project_id": d.ProjectID, "verified": d.Verified}
+	putIf(m, "redirect", d.Redirect)
+	if d.RedirectStatusCode != 0 {
+		m["redirect_status"] = d.RedirectStatusCode
+	}
+	putIf(m, "git_branch", d.GitBranch)
 	return m, nil
 }
 

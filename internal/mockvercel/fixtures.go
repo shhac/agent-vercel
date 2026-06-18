@@ -42,6 +42,8 @@ type Options struct {
 	AttackStatus       map[string]any
 	FirewallBypass     map[string]any
 	ProjectRoutes      map[string]any
+	ProjectDomains     []map[string]any
+	DomainTransfer     map[string]any
 	Drains             []map[string]any
 	// RuntimeLogsHang, when set, makes the runtime-logs handler hold the
 	// connection open after emitting its lines — simulating Vercel's
@@ -268,6 +270,15 @@ func defaults() *Options {
 			"result": []any{
 				map[string]any{"domain": "web.example.com", "sourceIp": "198.51.100.9", "allSources": false},
 			},
+		},
+		ProjectDomains: []map[string]any{
+			{"name": "example.com", "apexName": "example.com", "projectId": "prj_web", "verified": true},
+			{"name": "www.example.com", "apexName": "example.com", "projectId": "prj_web", "verified": true, "redirect": "example.com", "redirectStatusCode": 308},
+		},
+		DomainTransfer: map[string]any{
+			"status":       "pending_transfer",
+			"transferable": false,
+			"reason":       "awaiting registrar auth code",
 		},
 		ProjectRoutes: map[string]any{
 			"routes": []any{
