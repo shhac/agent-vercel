@@ -17,14 +17,18 @@ agent-vercel/
 │   │   ├── deployment.go         # `deployment` group (list/get/current + logs + writes)
 │   │   ├── project.go            # `project` group
 │   │   ├── env.go                # `env` group (list/diff/get/set/rm)
-│   │   ├── domain.go             # `domain` group (list/get/inspect/records/cert + writes)
-│   │   ├── alias.go              # `alias` group (list/set/rm)
+│   │   ├── domain.go             # `domain` group (list/get/inspect/records/cert/projects/transfer + writes)
+│   │   ├── alias.go              # `alias` group (list/set/rm/bypass)
+│   │   ├── firewall.go           # `firewall` group (config/attack-status/bypass — WAF reads)
+│   │   ├── cache.go              # `cache` group (purge by tag — gated mutation)
+│   │   ├── billing.go            # `billing` group (charges/consumption)
+│   │   ├── drains.go             # `drains` group (list/get — observability exports)
 │   │   ├── api.go                # `api call` escape hatch
 │   │   ├── config.go             # `config` group
 │   │   └── helpers.go / listout.go / context.go  # shared output, resolution, gating
 │   ├── credential/              # auth + scope store, Keychain boundary
 │   ├── vercel/                  # REST client: DI transport, retry, error mapping,
-│   │                            #   resources/logs/env/domain/writes methods
+│   │                            #   resources/logs/env/domain/writes/security/drains/billing methods
 │   ├── mockvercel/              # in-process fixture API (also cmd/mockvercel)
 │   ├── settings/               # config.json persistence
 │   ├── errors/                  # APIError{error, hint, fixable_by}

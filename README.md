@@ -6,8 +6,9 @@ the `agent-*` CLI family (`agent-slack`, `agent-stripe`, `agent-postmark`, `lin`
 …), sharing their conventions, output contract, and credential handling.
 
 > **Status:** feature-complete. The full command surface (auth, scope,
-> deployment, project, env, domain, alias, billing, api, config) is implemented
-> and tested against a fixture Vercel server (`internal/mockvercel`). See
+> deployment, project, env, domain, alias, firewall, cache, billing, webhook,
+> drains, edge-config, api, config) is implemented and tested against a fixture
+> Vercel server (`internal/mockvercel`). See
 > [`design-docs/`](design-docs/) for design decisions.
 
 ## Why this and not the `vercel` CLI
@@ -62,13 +63,16 @@ agent-vercel usage                       # LLM-oriented overview
 |---|---|
 | `auth` | `add`, `list` (`ls`), `test`, `set-default`, `remove`, `import-cli` |
 | `scope` | `list` (`ls`), `current`, `set-default`, `member list/get` |
-| `deployment` | `list`, `get`, `checks`, `current`, `logs`, `runtime-logs`, `promote`*, `rollback`*, `cancel`*, `redeploy`* |
-| `project` | `list`, `get`, `crons`, `custom-environments` |
+| `deployment` | `list`, `get`, `checks`, `routes`, `current`, `logs`, `runtime-logs`, `promote`*, `rollback`*, `cancel`*, `redeploy`* |
+| `project` | `list`, `get`, `crons`, `custom-environments`, `protection`, `routes` |
 | `env` | `list`, `diff`, `get`, `pull`, `shared list`, `shared get`, `set`*, `rm`* |
-| `domain` | `list`, `get`, `inspect`, `records`, `cert list/get`, `verify`*, `add`*, `rm`* |
+| `domain` | `list`, `get`, `inspect`, `records`, `cert list/get`, `projects`, `transfer`, `verify`*, `add`*, `rm`* |
 | `alias` | `list`, `set`*, `rm`*, `bypass`* |
-| `billing` | `charges` (`--by service\|project`) |
+| `firewall` | `config`, `attack-status`, `bypass` |
+| `cache` | `purge`* |
+| `billing` | `charges` (`--by service\|project\|region`), `consumption` |
 | `webhook` | `list` (`--project`) |
+| `drains` | `list` (`--project`), `get` |
 | `edge-config` | `list`, `items <id>` |
 | `api` | `call <METHOD> <path>` (raw escape hatch) |
 | `config` | `get`, `set`, `list`, `unset` |

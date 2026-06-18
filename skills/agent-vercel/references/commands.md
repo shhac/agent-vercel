@@ -42,8 +42,9 @@ There is no command that prints the secret. That is intentional.
 | Command | Key flags |
 |---|---|
 | `deployment list` | `--project --state --target --custom-env --branch --sha --user --since --until --limit --cursor --all` |
-| `deployment get <id\|url>` | |
+| `deployment get <id\|url>` | compact projection also carries build-triage fields: `build_skipped`, `first_branch_deployment`, `queued`, `error_step`/`error_link`/`state_reason`, `source`, `queue_wait_ms`, `build_duration_ms` |
 | `deployment checks <id\|url>` | `--blocking --failed`; CI/integration checks on the deploy (name, status, conclusion, blocking) — what is blocking or failing it |
+| `deployment routes <id\|url>` | the compiled routing the deploy runs (redirects/rewrites/headers) — redirect-loop triage |
 | `deployment current <project>` | live prod deployment + rolling-release; `--custom-env <slug>` shows newest READY in a custom env |
 | `deployment logs <id\|url>` | `--status --since --until --limit --max-body-chars` (build logs) |
 | `deployment runtime-logs <id\|url>` | `--level --status --path --limit`; a bounded live tail — collects logs for the `--timeout` window (default 6s) then returns |
@@ -60,9 +61,11 @@ There is no command that prints the secret. That is intentional.
 | Command | Key flags |
 |---|---|
 | `project list` | `--limit --search` |
-| `project get <id\|name>` | settings, framework, latest prod deployment |
+| `project get <id\|name>` | settings, framework, latest prod deployment; also build config (`root_directory`/`output_directory`/`build_command`/`install_command`/`ignore_command`) and `paused` |
 | `project crons <id\|name>` | cron jobs the project runs (path + schedule) and whether crons are enabled |
 | `project custom-environments <id\|name>` (`custom-envs`) | the project's custom deployment environments — slug, type, branch binding, domains; discovery counterpart to `--custom-env` |
+| `project protection <id\|name>` | deployment protection — which gate is on (Vercel Authentication / Password / Trusted IPs) and scope, plus whether an automation bypass exists (never the secret). Answers "why is my preview/prod URL 401-ing?" |
+| `project routes <id\|name>` | `--diff`; authored CDN routing rules (redirects/rewrites/headers) with staged-vs-live diff; `GET /v1/projects/{id}/routes`. Spec-plausible, not live-validated |
 
 ## env
 
@@ -86,7 +89,7 @@ distinct from the agent-vercel access token (never readable).
 |---|---|
 | `domain list` | `--limit` |
 | `domain get <domain>` | verification challenges, verified state |
-| `domain inspect <domain>` | nameserver / config check, misconfig reasons |
+| `domain inspect <domain>` | nameserver / config check, misconfig reasons; plus SSL/ACME readiness (`configured_by`, `accepted_challenges`, `recommended_ipv4`/`recommended_cname`) |
 | `domain records list <domain>` | list DNS records |
 | `domain records add <domain> <type> <name> <value>` * | `--ttl`; add a DNS record |
 | `domain records rm <domain> <record-id>` * | remove a DNS record |
@@ -95,6 +98,8 @@ distinct from the agent-vercel access token (never readable).
 | `domain rm <project> <domain>` * | |
 | `domain cert get <id>` | cert expiry / autoRenew / cns |
 | `domain cert list` | `--expiring <days>` filters to certs expiring within N days (0 = expired); bulk renewal triage. Spec-plausible, not live-validated — falls back to `domain cert get <id>` if the list 404s |
+| `domain projects <domain>` | the projects an apex is attached to (verified/redirect state) — wrong-project / conflict triage; `GET /v1/domains/{d}/project-domains`. Spec-plausible, not live-validated |
+| `domain transfer <domain>` | registrar registration/transfer status ("why is my transfer stuck"); `GET /v1/registrar/domains/{d}/transfer`. Spec-plausible, not live-validated |
 
 ## alias
 
@@ -105,17 +110,45 @@ distinct from the agent-vercel access token (never readable).
 | `alias rm <alias>` * | |
 | `alias bypass <alias\|id>` * | `--ttl`, `--revoke <secret>`, `--regenerate` — mint/revoke a shareable bypass link for a gated preview |
 
+## firewall
+
+Read-only Vercel Firewall (WAF) inspection; all take a `<project>` and are
+spec-plausible, not live-validated. `--full` returns the raw API object.
+
+| Command | Notes |
+|---|---|
+| `firewall config <project>` | active WAF config — enabled state, active custom rules, IP-rule count, active managed rulesets; `GET /v1/security/firewall/config/active` |
+| `firewall attack-status <project>` | `--since <days>`; active-attack / DDoS anomalies; `GET /v1/security/firewall/attack-status` |
+| `firewall bypass <project>` | system-bypass rules (sources allowed to skip the WAF), printed raw; `GET /v1/security/firewall/bypass` |
+
+## cache
+
+| Command | Notes |
+|---|---|
+| `cache purge <project>` * | `--tag <t>` (repeatable, max 16); invalidate CDN/runtime/data-cache entries by tag (background revalidate); `POST /v1/edge-cache/invalidate-by-tags`. Requires at least one `--tag` |
+
 ## billing
 
 | Command | Notes |
 |---|---|
-| `billing charges` | `--from`/`--to` (date, RFC3339, or duration like 30d; default last 30d), `--by service\|project` to aggregate billed cost — "what's driving spend". `GET /v1/billing/charges` (FOCUS) |
+| `billing charges` | `--from`/`--to` (date, RFC3339, or duration like 30d; default last 30d), `--by service\|project\|region` to aggregate billed cost — "what's driving spend". `GET /v1/billing/charges` (FOCUS) |
+| `billing consumption` | `--from`/`--to`; consumed quantity per service (volume + unit, not just $) — "what resource is the spike". Reuses the FOCUS charges payload |
 
 ## webhook
 
 | Command | Notes |
 |---|---|
 | `webhook list` | `--project <id>` to filter; the scope's webhooks — url, subscribed events, target projects. "Is the deploy notification / CI integration wired up" |
+
+## drains
+
+Where observability data (log/trace/analytics/speed-insights) is shipped — the
+only REST handle on it. Spec-plausible, not live-validated.
+
+| Command | Notes |
+|---|---|
+| `drains list` | `--project <id>` to filter; the scope's drains — id, name, status, disabled, schema types, project count. Flags failing/disabled drains. The delivery URL is omitted from compact (can embed a token) — use `--full`. `GET /v1/drains` |
+| `drains get <id>` | one drain by id; `GET /v1/drains/{id}` |
 
 ## edge-config (`edge`)
 

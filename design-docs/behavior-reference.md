@@ -13,6 +13,47 @@ ground truth — wire a new endpoint behind the `integration` test harness and
 probe it live before shipping. (We shipped scope-wide `alias list` from the spec
 and had to revert it when it 404'd live.)
 
+### Spec-documented, shipped without live validation
+
+These endpoints back commands that shipped from the OpenAPI spec but were
+validated only against fixtures — no live response confirmed (no fixture
+traffic / no role-scoped token / read deemed safe behind the same caveat as
+`/v9/certs` and the billing-charges shape). Each is wired behind the
+`integration` harness; treat the field shapes as spec-trusted, not
+live-confirmed, until probed.
+
+- **Firewall (WAF) reads** — `GET /v1/security/firewall/config/active` (active
+  config: custom rules, IP blocklist, managed rulesets, bot/attack state),
+  `GET /v1/security/firewall/attack-status` (active-attack/DDoS anomalies over
+  `since` days, default 1), `GET /v1/security/firewall/bypass` (system bypass
+  rules). All take `projectId`. **Note** the sibling
+  `GET /v1/security/firewall/events` is confirmed 404 live (above), so these
+  three are especially suspect — validate before relying. Compact projections
+  are defensive (decode-and-omit on shape mismatch); `--full` returns the raw
+  object.
+- **Cache purge** — `POST /v1/edge-cache/invalidate-by-tags?projectIdOrName=…`,
+  body `{tags:[…]}` (≤16 tags), marks CDN/runtime/data-cache entries stale for
+  background revalidation. `--yes`-gated. Success body unconfirmed; the command
+  synthesizes `{purged, project}` when the response body is empty (Vercel
+  returns 200 with no body in the documented case).
+- **Observability drains** — `GET /v1/drains` (log/trace/analytics/
+  speed_insights exports; payload may be a bare array or wrapped under
+  `drains`), `GET /v1/drains/{id}`. The compact projection omits the delivery
+  URL (it can embed a destination token).
+- **Project routes** — `GET /v1/projects/{id}/routes`: authored CDN routing
+  rules (redirects/rewrites/headers) + a version block (staging vs live);
+  `diff=true` returns the staged-vs-production diff.
+- **Reverse domain map** — `GET /v1/domains/{domain}/project-domains`: every
+  project domain on an apex (projectId, redirect, verified); payload may be a
+  bare array or wrapped under `domains`.
+- **Domain transfer status** — `GET /v1/registrar/domains/{domain}/transfer`:
+  registration/transfer status.
+
+Commands that reuse already-live endpoints (not spec-only): `project protection`
+reads protection fields off `GET /v9/projects/{id}`; `deployment routes` reads
+the `routes[]` off `GET /v13/deployments/{id}`; `billing consumption` reuses
+`GET /v1/billing/charges`.
+
 ## Auth and scope
 
 - **Bearer token.** `Authorization: Bearer <token>` against

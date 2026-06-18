@@ -93,16 +93,19 @@ Resolution order:
 
 ## Command surface (overview)
 
-Full surface, flags, and gating live in `cli-design.md`. Domains:
+The *initial* surface (a point-in-time snapshot — the current full set, incl.
+later domains like `firewall`/`cache`/`drains`, lives in `cli-design.md` and
+`agent-vercel usage`). Domains:
 
 - **auth**: `add`, `list` (`ls`), `test` (`whoami`), `set-default`, `remove`,
   `import-cli`
-- **scope**: `list` (`ls`), `current`, `set-default`
+- **scope**: `list` (`ls`), `current`, `set-default`, `member list/get`
 - **deployment**: `list`, `get`, `logs`, `runtime-logs`, `current`, `promote`,
   `rollback`, `cancel`, `redeploy`
 - **project**: `list`, `get`
 - **env**: `list`, `diff`, `get`, `set`, `rm`
-- **domain**: `list`, `get`, `inspect`, `records`, `verify`, `add`, `rm`, `cert`
+- **domain**: `list`, `get`, `inspect`, `records`, `verify`, `add`, `rm`,
+  `cert list/get`, `projects`, `transfer`
 - **alias**: `list`, `set`, `rm`, `bypass`
 - **billing**: `charges` (`--by service|project`)
 - **api**: `call <METHOD> <path>` (raw REST escape hatch)

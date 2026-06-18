@@ -16,8 +16,9 @@ Vercel CLI for AI agents. Go + cobra.
   `design-docs/cli-design.md`.
 - Prefer read-only commands. Destructive or state-changing mutations
   (`deployment promote|rollback|cancel|redeploy`, `env set|rm`,
-  `domain add|rm|verify`, `alias set|rm`) must require `--yes` and return a
-  human-fixable JSON error without it.
+  `domain add|rm|verify`, `domain records add|rm`, `alias set|rm|bypass`,
+  `cache purge`, and `api call` with a non-GET method) must require `--yes` and
+  return a human-fixable JSON error without it.
 - Keep log/body output truncatable (`--max-body-chars`); omit bulky payloads
   from list output by default, restore with `--full`.
 - Keep Vercel HTTP logic dependency-injected so tests run without real network
