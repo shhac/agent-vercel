@@ -28,6 +28,25 @@ func TestDomainCerts(t *testing.T) {
 	}
 }
 
+func TestDomainCertsFull(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	// --full returns raw cert objects (cns / expiresAt) instead of the compact
+	// projection (covers / expires).
+	out, _, err := execCLI(t, srv.URL, "domain", "certs", "--full")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	rows := ndjsonLines(t, out)
+	if _, projected := rows[0]["covers"]; projected {
+		t.Fatalf("--full should not carry compact 'covers': %v", rows[0])
+	}
+	if _, raw := rows[0]["cns"]; !raw {
+		t.Fatalf("--full should expose raw cns: %v", rows[0])
+	}
+}
+
 func TestDomainCertsExpiring(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New())
 	defer srv.Close()

@@ -60,6 +60,47 @@ func TestScopeMemberByEmail(t *testing.T) {
 	}
 }
 
+func TestScopeMemberByIDAndUsername(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	// The same match arm accepts uid or username, not just email.
+	byID, _, err := execCLI(t, srv.URL, "--scope", "acme", "scope", "member", "usr_owner")
+	if err != nil {
+		t.Fatalf("by id err: %v", err)
+	}
+	if decodeJSON(t, byID)["role"] != "OWNER" {
+		t.Fatalf("by id = %s", byID)
+	}
+
+	byUser, _, err := execCLI(t, srv.URL, "--scope", "acme", "scope", "member", "newbie")
+	if err != nil {
+		t.Fatalf("by username err: %v", err)
+	}
+	if decodeJSON(t, byUser)["uid"] != "usr_pending" {
+		t.Fatalf("by username = %s", byUser)
+	}
+}
+
+func TestScopeMembersFull(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	// --full returns raw member objects (camelCase createdAt) instead of the
+	// compact projection's "joined".
+	out, _, err := execCLI(t, srv.URL, "--scope", "acme", "scope", "members", "--full")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	rows := ndjsonLines(t, out)
+	if _, projected := rows[0]["joined"]; projected {
+		t.Fatalf("--full should not carry compact 'joined': %v", rows[0])
+	}
+	if _, raw := rows[0]["createdAt"]; !raw {
+		t.Fatalf("--full should expose raw createdAt: %v", rows[0])
+	}
+}
+
 func TestScopeMemberNotFound(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New())
 	defer srv.Close()

@@ -61,6 +61,20 @@ func TestEnvSharedGetByKey(t *testing.T) {
 	}
 }
 
+func TestEnvSharedGetByID(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	// get matches by id as well as key.
+	out, _, err := execCLI(t, srv.URL, "env", "shared", "get", "env_shared_db")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if decodeJSON(t, out)["key"] != "DATABASE_URL" {
+		t.Fatalf("get by id = %s", out)
+	}
+}
+
 func TestEnvSharedGetNotFound(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New())
 	defer srv.Close()
