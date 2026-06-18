@@ -41,6 +41,7 @@ CORE DOMAINS (see design-docs/cli-design.md)
   cache        purge <project> --tag <t>*                  (invalidate CDN cache by tag)
   billing      charges [--by service|project|region] | usage   (what is driving spend / consumed volume)
   webhook      list [--project]                  (which events fire where)
+  drains       list [--project] | get <id>      (where log/trace/analytics data is shipped)
   edge-config  list | items <id>                  (live non-secret key/value config)
   scope        list | current | set-default | member list/get
   auth         add | list | test | set-default | remove | import-cli

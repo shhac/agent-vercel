@@ -179,6 +179,33 @@ func New(opts ...Option) http.Handler {
 	mux.HandleFunc("POST /v1/edge-cache/invalidate-by-tags", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK) // Vercel returns 200 with no body
 	}))
+	mux.HandleFunc("GET /v1/drains", requireBearer(func(w http.ResponseWriter, r *http.Request) {
+		drains := o.Drains
+		if pid := r.URL.Query().Get("projectId"); pid != "" {
+			kept := make([]map[string]any, 0, len(drains))
+			for _, d := range drains {
+				ids, _ := d["projectIds"].([]any)
+				for _, id := range ids {
+					if id == pid {
+						kept = append(kept, d)
+						break
+					}
+				}
+			}
+			drains = kept
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"drains": drains})
+	}))
+	mux.HandleFunc("GET /v1/drains/{id}", requireBearer(func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		for _, d := range o.Drains {
+			if d["id"] == id {
+				writeJSON(w, http.StatusOK, d)
+				return
+			}
+		}
+		writeErr(w, http.StatusNotFound, "not_found", "no such drain")
+	}))
 	mux.HandleFunc("GET /v8/certs/{id}", requireBearer(func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		if c, ok := o.Certs[id]; ok {

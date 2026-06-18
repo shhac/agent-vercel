@@ -41,6 +41,7 @@ type Options struct {
 	FirewallConfig     map[string]any
 	AttackStatus       map[string]any
 	FirewallBypass     map[string]any
+	Drains             []map[string]any
 	// RuntimeLogsHang, when set, makes the runtime-logs handler hold the
 	// connection open after emitting its lines — simulating Vercel's
 	// open-ended stream so the client's bounded-window read can be tested.
@@ -258,6 +259,21 @@ func defaults() *Options {
 		FirewallBypass: map[string]any{
 			"result": []any{
 				map[string]any{"domain": "web.example.com", "sourceIp": "198.51.100.9", "allSources": false},
+			},
+		},
+		Drains: []map[string]any{
+			{
+				"id": "drain_logs", "name": "datadog-logs", "status": "enabled",
+				"schemas":    map[string]any{"log": map[string]any{"version": 1}},
+				"delivery":   map[string]any{"url": "https://http-intake.datadoghq.com/v1/input?token=SECRET"},
+				"projectIds": []any{"prj_web"},
+				"createdAt":  int64(1716000000000),
+			},
+			{
+				"id": "drain_traces", "name": "honeycomb-traces", "status": "errored", "disabled": true,
+				"schemas":   map[string]any{"trace": map[string]any{"version": 1}},
+				"delivery":  map[string]any{"url": "https://api.honeycomb.io/v1/traces"},
+				"createdAt": int64(1716010000000),
 			},
 		},
 	}
