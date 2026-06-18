@@ -44,6 +44,18 @@ func requireYes(yes bool, action, rerun string) error {
 		WithHint("rerun with --yes: " + rerun)
 }
 
+// confirmAndClient runs the prologue shared by every --yes-gated mutation:
+// enforce the confirmation gate (a fixable_by:human error naming the action and
+// the --yes rerun when unconfirmed), then resolve the active client. It
+// collapses the requireYes-then-resolveClient pair into one error check at the
+// call site. action and rerun are the same arguments requireYes takes.
+func confirmAndClient(g *GlobalFlags, yes bool, action, rerun string) (*resolved, error) {
+	if err := requireYes(yes, action, rerun); err != nil {
+		return nil, err
+	}
+	return resolveClient(g)
+}
+
 // setIf sets a query param only when val is non-empty.
 func setIf(q url.Values, key, val string) {
 	if val != "" {
@@ -56,15 +68,6 @@ func putIf(m map[string]any, key, val string) {
 	if val != "" {
 		m[key] = val
 	}
-}
-
-// toAnySlice widens a []string into the []any an output row expects.
-func toAnySlice(ss []string) []any {
-	out := make([]any, len(ss))
-	for i, s := range ss {
-		out[i] = s
-	}
-	return out
 }
 
 // metaStr returns the first non-empty string value among the given meta keys.

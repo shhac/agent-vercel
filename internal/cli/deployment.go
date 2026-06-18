@@ -129,11 +129,7 @@ func deploymentCurrentCmd(g *GlobalFlags) *cobra.Command {
 			if customEnv != "" {
 				// No target param for custom envs: pull recent READY deploys and
 				// pick the newest matching the custom environment.
-				q := url.Values{}
-				q.Set("projectId", args[0])
-				q.Set("state", "READY")
-				q.Set("limit", "30")
-				items, _, err := r.client.ListDeployments(cmd.Context(), q)
+				items, err := listReadyDeployments(cmd, r, args[0], "", 30)
 				if err != nil {
 					return err
 				}
@@ -146,12 +142,7 @@ func deploymentCurrentCmd(g *GlobalFlags) *cobra.Command {
 				return printSingle(g, out)
 			}
 
-			q := url.Values{}
-			q.Set("projectId", args[0])
-			q.Set("target", "production")
-			q.Set("state", "READY")
-			q.Set("limit", "1")
-			items, _, err := r.client.ListDeployments(cmd.Context(), q)
+			items, err := listReadyDeployments(cmd, r, args[0], "production", 1)
 			if err != nil {
 				return err
 			}
@@ -204,6 +195,21 @@ type rawDeployment struct {
 		ID   string `json:"id"`
 		Slug string `json:"slug"`
 	} `json:"customEnvironment"`
+}
+
+// listReadyDeployments fetches recent READY deployments for a project, sharing
+// the query construction between the production and custom-environment paths of
+// 'deployment current'. A non-empty target scopes server-side (e.g.
+// "production"); an empty target with a larger limit backs the client-side
+// custom-environment scan.
+func listReadyDeployments(cmd *cobra.Command, r *resolved, projectID, target string, limit int) ([]json.RawMessage, error) {
+	q := url.Values{}
+	q.Set("projectId", projectID)
+	q.Set("state", "READY")
+	setIf(q, "target", target)
+	q.Set("limit", strconv.Itoa(limit))
+	items, _, err := r.client.ListDeployments(cmd.Context(), q)
+	return items, err
 }
 
 // filterByCustomEnv keeps deployments whose customEnvironment id or slug matches

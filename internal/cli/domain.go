@@ -27,18 +27,10 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			items, next, err := fetchPaged(url.Values{}, *listCursor, *listAll, func(q url.Values) ([]json.RawMessage, *int64, error) {
+			return emitPaged(g, url.Values{}, *listCursor, *listAll, func(q url.Values) ([]json.RawMessage, *int64, error) {
 				it, p, e := r.client.ListDomains(cmd.Context(), q)
 				return it, p.Next, e
-			})
-			if err != nil {
-				return err
-			}
-			rows, err := compactRows(items, g.Full, compactDomain)
-			if err != nil {
-				return err
-			}
-			return emitList(g, rows, paginationMeta(next))
+			}, compactDomain)
 		},
 	}
 	listCursor, listAll = addPageFlags(list)
@@ -139,11 +131,7 @@ func domainCertsCmd(g *GlobalFlags) *cobra.Command {
 			if cmd.Flags().Changed("expiring") {
 				items = filterExpiringCerts(items, expiring)
 			}
-			rows, err := compactRows(items, g.Full, compactCert)
-			if err != nil {
-				return err
-			}
-			return emitList(g, rows, nil)
+			return emitRows(g, items, compactCert)
 		},
 	}
 	cmd.Flags().IntVar(&expiring, "expiring", 0, "only certs expiring within this many days (0 = already expired/expiring today)")
@@ -191,18 +179,10 @@ func domainRecordsCmd(g *GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			items, next, err := fetchPaged(url.Values{}, *cursor, *all, func(q url.Values) ([]json.RawMessage, *int64, error) {
+			return emitPaged(g, url.Values{}, *cursor, *all, func(q url.Values) ([]json.RawMessage, *int64, error) {
 				it, p, e := r.client.DomainRecords(cmd.Context(), args[0], q)
 				return it, p.Next, e
-			})
-			if err != nil {
-				return err
-			}
-			rows, err := compactRows(items, g.Full, compactRecord)
-			if err != nil {
-				return err
-			}
-			return emitList(g, rows, paginationMeta(next))
+			}, compactRecord)
 		},
 	}
 	cursor, all = addPageFlags(list)
@@ -215,11 +195,8 @@ func domainRecordsCmd(g *GlobalFlags) *cobra.Command {
 		Args:  cobra.ExactArgs(4),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			domain, recType, name, value := args[0], args[1], args[2], args[3]
-			if err := requireYes(*yes, "add "+recType+" record on "+domain,
-				"agent-vercel domain records add "+domain+" "+recType+" "+name+" <value> --yes"); err != nil {
-				return err
-			}
-			r, err := resolveClient(g)
+			r, err := confirmAndClient(g, *yes, "add "+recType+" record on "+domain,
+				"agent-vercel domain records add "+domain+" "+recType+" "+name+" <value> --yes")
 			if err != nil {
 				return err
 			}
@@ -244,11 +221,8 @@ func domainRecordsCmd(g *GlobalFlags) *cobra.Command {
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			domain, recID := args[0], args[1]
-			if err := requireYes(*rmYes, "remove DNS record "+recID+" from "+domain,
-				"agent-vercel domain records rm "+domain+" "+recID+" --yes"); err != nil {
-				return err
-			}
-			r, err := resolveClient(g)
+			r, err := confirmAndClient(g, *rmYes, "remove DNS record "+recID+" from "+domain,
+				"agent-vercel domain records rm "+domain+" "+recID+" --yes")
 			if err != nil {
 				return err
 			}
@@ -273,11 +247,8 @@ func domainAddCmd(g *GlobalFlags) *cobra.Command {
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			project, domain := args[0], args[1]
-			if err := requireYes(*yes, "add domain "+domain+" to "+project,
-				"agent-vercel domain add "+project+" "+domain+" --yes"); err != nil {
-				return err
-			}
-			r, err := resolveClient(g)
+			r, err := confirmAndClient(g, *yes, "add domain "+domain+" to "+project,
+				"agent-vercel domain add "+project+" "+domain+" --yes")
 			if err != nil {
 				return err
 			}
@@ -305,11 +276,8 @@ func domainRmCmd(g *GlobalFlags) *cobra.Command {
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			project, domain := args[0], args[1]
-			if err := requireYes(*yes, "remove domain "+domain+" from "+project,
-				"agent-vercel domain rm "+project+" "+domain+" --yes"); err != nil {
-				return err
-			}
-			r, err := resolveClient(g)
+			r, err := confirmAndClient(g, *yes, "remove domain "+domain+" from "+project,
+				"agent-vercel domain rm "+project+" "+domain+" --yes")
 			if err != nil {
 				return err
 			}
@@ -336,11 +304,8 @@ func domainVerifyCmd(g *GlobalFlags) *cobra.Command {
 				return agenterrors.New("--project is required", agenterrors.FixableByAgent).
 					WithHint("pass --project <id|name>")
 			}
-			if err := requireYes(*yes, "verify domain "+domain+" on "+project,
-				"agent-vercel domain verify "+domain+" --project "+project+" --yes"); err != nil {
-				return err
-			}
-			r, err := resolveClient(g)
+			r, err := confirmAndClient(g, *yes, "verify domain "+domain+" on "+project,
+				"agent-vercel domain verify "+domain+" --project "+project+" --yes")
 			if err != nil {
 				return err
 			}

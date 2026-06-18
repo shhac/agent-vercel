@@ -74,30 +74,36 @@ func resolveClient(g *GlobalFlags) (*resolved, error) {
 // credential it belongs to (nil for an env-provided token).
 func resolveToken(g *GlobalFlags, creds *credential.Credentials) (string, *credential.Auth, error) {
 	if g.Auth != "" {
-		a, err := findAuthByLabel(creds, g.Auth)
-		if err != nil {
-			return "", nil, err
-		}
-		if a != nil {
-			return a.Secret, a, nil
-		}
-		return "", nil, agenterrors.Newf(agenterrors.FixableByAgent, "no stored credential labeled %q", g.Auth).
-			WithHint("run 'agent-vercel auth list' to see stored labels")
+		return labeledSecret(creds, g.Auth,
+			agenterrors.Newf(agenterrors.FixableByAgent, "no stored credential labeled %q", g.Auth).
+				WithHint("run 'agent-vercel auth list' to see stored labels"))
 	}
 	if env := os.Getenv("VERCEL_TOKEN"); env != "" {
 		return env, nil, nil
 	}
 	if creds.DefaultAuth != "" {
-		a, err := findAuthByLabel(creds, creds.DefaultAuth)
-		if err != nil {
-			return "", nil, err
-		}
-		if a != nil {
-			return a.Secret, a, nil
-		}
+		return labeledSecret(creds, creds.DefaultAuth,
+			agenterrors.Newf(agenterrors.FixableByHuman, "default credential %q is not stored", creds.DefaultAuth).
+				WithHint("run 'agent-vercel auth list', then set a valid default with 'agent-vercel auth default <label>'"))
 	}
 	return "", nil, agenterrors.New("no Vercel credential configured", agenterrors.FixableByHuman).
 		WithHint("set VERCEL_TOKEN and run 'agent-vercel auth add', or pass --auth <label>")
+}
+
+// labeledSecret resolves a stored credential's token by label, sharing the
+// lookup-and-branch between the explicit --auth and default-credential paths.
+// notFound is returned when no credential carries the label; it differs by
+// source (an explicit --auth miss is agent-fixable, a stale default is
+// human-fixable), so the caller supplies it.
+func labeledSecret(creds *credential.Credentials, label string, notFound error) (string, *credential.Auth, error) {
+	a, err := findAuthByLabel(creds, label)
+	if err != nil {
+		return "", nil, err
+	}
+	if a == nil {
+		return "", nil, notFound
+	}
+	return a.Secret, a, nil
 }
 
 // findAuthByLabel returns the stored credential with the given label, or

@@ -25,18 +25,10 @@ func registerAlias(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			items, next, err := fetchPaged(url.Values{}, *listCursor, *listAll, func(q url.Values) ([]json.RawMessage, *int64, error) {
+			return emitPaged(g, url.Values{}, *listCursor, *listAll, func(q url.Values) ([]json.RawMessage, *int64, error) {
 				it, p, e := r.client.DeploymentAliases(cmd.Context(), cleanRef(args[0]), q)
 				return it, p.Next, e
-			})
-			if err != nil {
-				return err
-			}
-			rows, err := compactRows(items, g.Full, compactAlias)
-			if err != nil {
-				return err
-			}
-			return emitList(g, rows, paginationMeta(next))
+			}, compactAlias)
 		},
 	}
 	listCursor, listAll = addPageFlags(list)
@@ -59,10 +51,7 @@ func aliasBypassCmd(g *GlobalFlags) *cobra.Command {
 			if revoke != "" {
 				action = "revoke a protection-bypass link for " + args[0]
 			}
-			if err := requireYes(*yes, action, "agent-vercel alias bypass "+args[0]+" --yes"); err != nil {
-				return err
-			}
-			r, err := resolveClient(g)
+			r, err := confirmAndClient(g, *yes, action, "agent-vercel alias bypass "+args[0]+" --yes")
 			if err != nil {
 				return err
 			}
@@ -98,11 +87,8 @@ func aliasSetCmd(g *GlobalFlags) *cobra.Command {
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			deployment, alias := args[0], args[1]
-			if err := requireYes(*yes, "point "+alias+" at "+deployment,
-				"agent-vercel alias set "+deployment+" "+alias+" --yes"); err != nil {
-				return err
-			}
-			r, err := resolveClient(g)
+			r, err := confirmAndClient(g, *yes, "point "+alias+" at "+deployment,
+				"agent-vercel alias set "+deployment+" "+alias+" --yes")
 			if err != nil {
 				return err
 			}
@@ -124,11 +110,8 @@ func aliasRmCmd(g *GlobalFlags) *cobra.Command {
 		Short: "Delete an alias",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := requireYes(*yes, "delete alias "+args[0],
-				"agent-vercel alias rm "+args[0]+" --yes"); err != nil {
-				return err
-			}
-			r, err := resolveClient(g)
+			r, err := confirmAndClient(g, *yes, "delete alias "+args[0],
+				"agent-vercel alias rm "+args[0]+" --yes")
 			if err != nil {
 				return err
 			}

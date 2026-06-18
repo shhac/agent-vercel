@@ -28,7 +28,7 @@ func envPullCmd(g *GlobalFlags) *cobra.Command {
 		Short: "Write a project's (decrypted) env vars for one environment to a dotenv file",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			envs, err := fetchEnv(g, cmd, args[0], gitBranch, "", true)
+			_, envs, err := fetchEnv(g, cmd, args[0], gitBranch, "", true)
 			if err != nil {
 				return err
 			}
@@ -81,12 +81,9 @@ func envSetCmd(g *GlobalFlags) *cobra.Command {
 				return agenterrors.New("no environment specified", agenterrors.FixableByAgent).
 					WithHint("pass --environment production[,preview,development]")
 			}
-			if err := requireYes(*yes,
+			r, err := confirmAndClient(g, *yes,
 				"set env "+key+" on "+project+" ("+strings.Join(targetList, ",")+")",
-				"agent-vercel env set "+project+" "+key+" <value> --environment "+strings.Join(targetList, ",")+" --yes"); err != nil {
-				return err
-			}
-			r, err := resolveClient(g)
+				"agent-vercel env set "+project+" "+key+" <value> --environment "+strings.Join(targetList, ",")+" --yes")
 			if err != nil {
 				return err
 			}
@@ -125,7 +122,7 @@ func envRmCmd(g *GlobalFlags) *cobra.Command {
 				"agent-vercel env rm "+project+" "+key+" --yes"); err != nil {
 				return err
 			}
-			envs, err := fetchEnv(g, cmd, project, "", "", false)
+			r, envs, err := fetchEnv(g, cmd, project, "", "", false)
 			if err != nil {
 				return err
 			}
@@ -146,10 +143,6 @@ func envRmCmd(g *GlobalFlags) *cobra.Command {
 			case 1:
 			default:
 				return agenterrors.Newf(agenterrors.FixableByAgent, "%q matches %d env entries; narrow with --environment", key, len(ids))
-			}
-			r, err := resolveClient(g)
-			if err != nil {
-				return err
 			}
 			if _, err := r.client.DeleteEnv(cmd.Context(), project, ids[0]); err != nil {
 				return err
@@ -204,7 +197,10 @@ func targets(e rawEnv) map[string]bool {
 	return set
 }
 
-func fetchEnv(g *GlobalFlags, cmd *cobra.Command, project, gitBranch, customEnv string, decrypt bool) ([]rawEnv, error) {
+// fetchEnv resolves a client and returns a project's env vars along with the
+// *resolved it built, so a caller that also mutates (env rm) can reuse the same
+// client instead of opening the credential store and reading the Keychain twice.
+func fetchEnv(g *GlobalFlags, cmd *cobra.Command, project, gitBranch, customEnv string, decrypt bool) (*resolved, []rawEnv, error) {
 	q := url.Values{}
 	if decrypt {
 		q.Set("decrypt", "true")
@@ -213,21 +209,21 @@ func fetchEnv(g *GlobalFlags, cmd *cobra.Command, project, gitBranch, customEnv 
 	setIf(q, "customEnvironmentId", customEnv)
 	r, err := resolveClient(g)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	items, err := r.client.ProjectEnv(cmd.Context(), project, q)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	out := make([]rawEnv, 0, len(items))
 	for _, it := range items {
 		var e rawEnv
 		if err := json.Unmarshal(it, &e); err != nil {
-			return nil, agenterrors.Wrap(err, agenterrors.FixableByAgent)
+			return nil, nil, agenterrors.Wrap(err, agenterrors.FixableByAgent)
 		}
 		out = append(out, e)
 	}
-	return out, nil
+	return r, out, nil
 }
 
 func envListCmd(g *GlobalFlags) *cobra.Command {
@@ -238,7 +234,7 @@ func envListCmd(g *GlobalFlags) *cobra.Command {
 		Short: "List a project's environment variables",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			envs, err := fetchEnv(g, cmd, args[0], gitBranch, customEnv, decrypt)
+			_, envs, err := fetchEnv(g, cmd, args[0], gitBranch, customEnv, decrypt)
 			if err != nil {
 				return err
 			}
@@ -268,7 +264,7 @@ func envGetCmd(g *GlobalFlags) *cobra.Command {
 		Short: "Get one environment variable (across or within an environment)",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			envs, err := fetchEnv(g, cmd, args[0], "", "", decrypt)
+			_, envs, err := fetchEnv(g, cmd, args[0], "", "", decrypt)
 			if err != nil {
 				return err
 			}
@@ -312,7 +308,7 @@ func envDiffCmd(g *GlobalFlags) *cobra.Command {
 			a, b := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
 
 			// Decrypt so value-level differences (not just presence) surface.
-			envs, err := fetchEnv(g, cmd, args[0], "", "", true)
+			_, envs, err := fetchEnv(g, cmd, args[0], "", "", true)
 			if err != nil {
 				return err
 			}

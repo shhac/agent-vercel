@@ -27,11 +27,7 @@ func registerEdgeConfig(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			rows, err := compactRows(items, g.Full, compactEdgeConfig)
-			if err != nil {
-				return err
-			}
-			return emitList(g, rows, nil)
+			return emitRows(g, items, compactEdgeConfig)
 		},
 	}
 
@@ -48,11 +44,7 @@ func registerEdgeConfig(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			rows, err := compactRows(rawItems, g.Full, compactEdgeConfigItem)
-			if err != nil {
-				return err
-			}
-			return emitList(g, rows, nil)
+			return emitRows(g, rawItems, compactEdgeConfigItem)
 		},
 	}
 

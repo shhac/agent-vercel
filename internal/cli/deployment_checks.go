@@ -23,11 +23,7 @@ func deploymentChecksCmd(g *GlobalFlags) *cobra.Command {
 				return err
 			}
 			items = filterChecks(items, blockingOnly, failedOnly)
-			rows, err := compactRows(items, g.Full, compactCheck)
-			if err != nil {
-				return err
-			}
-			return emitList(g, rows, nil)
+			return emitRows(g, items, compactCheck)
 		},
 	}
 	f := cmd.Flags()

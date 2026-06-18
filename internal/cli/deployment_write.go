@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
 	"github.com/shhac/agent-vercel/internal/vercel"
@@ -9,20 +10,25 @@ import (
 )
 
 // deploymentRef resolves a deployment id/url to its canonical id, project id,
-// name, and target — needed by the project-scoped write endpoints.
+// name, and target — needed by the project-scoped write endpoints. It reads the
+// typed deployment shape directly (the same fields compactDeployment projects),
+// so the write commands depend on the API contract rather than the output
+// projection.
 func deploymentRef(ctx context.Context, client *vercel.Client, idOrURL string) (id, projectID, name, target string, err error) {
 	raw, err := client.GetDeployment(ctx, cleanRef(idOrURL))
 	if err != nil {
 		return "", "", "", "", err
 	}
-	m, err := compactDeployment(raw)
-	if err != nil {
-		return "", "", "", "", err
+	var d rawDeployment
+	if err := json.Unmarshal(raw, &d); err != nil {
+		return "", "", "", "", agenterrors.Wrap(err, agenterrors.FixableByAgent)
 	}
-	id, _ = m["id"].(string)
-	projectID, _ = m["project_id"].(string)
-	name, _ = m["name"].(string)
-	target, _ = m["target"].(string)
+	id = firstNonEmpty(d.UID, d.ID)
+	projectID = d.ProjectID
+	name = d.Name
+	if d.Target != nil {
+		target = *d.Target
+	}
 	if id == "" || projectID == "" {
 		return "", "", "", "", agenterrors.New("could not resolve deployment", agenterrors.FixableByAgent)
 	}
@@ -36,10 +42,7 @@ func deploymentPromoteCmd(g *GlobalFlags) *cobra.Command {
 		Short: "Promote a deployment to production (repoints traffic; no rebuild)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := requireYes(*yes, "promote "+args[0]+" to production", "agent-vercel deployment promote "+args[0]+" --yes"); err != nil {
-				return err
-			}
-			r, err := resolveClient(g)
+			r, err := confirmAndClient(g, *yes, "promote "+args[0]+" to production", "agent-vercel deployment promote "+args[0]+" --yes")
 			if err != nil {
 				return err
 			}
@@ -65,10 +68,7 @@ func deploymentRollbackCmd(g *GlobalFlags) *cobra.Command {
 		Short: "Roll production back to a previous deployment",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := requireYes(*yes, "roll production back to "+args[0], "agent-vercel deployment rollback "+args[0]+" --yes"); err != nil {
-				return err
-			}
-			r, err := resolveClient(g)
+			r, err := confirmAndClient(g, *yes, "roll production back to "+args[0], "agent-vercel deployment rollback "+args[0]+" --yes")
 			if err != nil {
 				return err
 			}
@@ -94,10 +94,7 @@ func deploymentCancelCmd(g *GlobalFlags) *cobra.Command {
 		Short: "Cancel an in-progress deployment build",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := requireYes(*yes, "cancel build "+args[0], "agent-vercel deployment cancel "+args[0]+" --yes"); err != nil {
-				return err
-			}
-			r, err := resolveClient(g)
+			r, err := confirmAndClient(g, *yes, "cancel build "+args[0], "agent-vercel deployment cancel "+args[0]+" --yes")
 			if err != nil {
 				return err
 			}
@@ -122,10 +119,7 @@ func deploymentRedeployCmd(g *GlobalFlags) *cobra.Command {
 		Short: "Rebuild and deploy a new copy of an existing deployment",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := requireYes(*yes, "redeploy "+args[0], "agent-vercel deployment redeploy "+args[0]+" --yes"); err != nil {
-				return err
-			}
-			r, err := resolveClient(g)
+			r, err := confirmAndClient(g, *yes, "redeploy "+args[0], "agent-vercel deployment redeploy "+args[0]+" --yes")
 			if err != nil {
 				return err
 			}

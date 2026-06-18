@@ -34,18 +34,10 @@ func registerProject(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			items, next, err := fetchPaged(q, *cursor, *all, func(q url.Values) ([]json.RawMessage, *int64, error) {
+			return emitPaged(g, q, *cursor, *all, func(q url.Values) ([]json.RawMessage, *int64, error) {
 				it, p, e := r.client.ListProjects(cmd.Context(), q)
 				return it, p.Next, e
-			})
-			if err != nil {
-				return err
-			}
-			rows, err := compactRows(items, g.Full, compactProject)
-			if err != nil {
-				return err
-			}
-			return emitList(g, rows, paginationMeta(next))
+			}, compactProject)
 		},
 	}
 	cursor, all = addPageFlags(list)
@@ -107,11 +99,7 @@ func registerProject(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			rows, err := compactRows(items, g.Full, compactCustomEnv)
-			if err != nil {
-				return err
-			}
-			return emitList(g, rows, nil)
+			return emitRows(g, items, compactCustomEnv)
 		},
 	}
 
@@ -153,7 +141,7 @@ func compactCustomEnv(raw json.RawMessage) (map[string]any, error) {
 		for i, d := range e.Domains {
 			names[i] = d.Name
 		}
-		m["domains"] = toAnySlice(names)
+		m["domains"] = names
 	}
 	putIf(m, "created", msToRFC3339(e.CreatedAt))
 	putIf(m, "updated", msToRFC3339(e.UpdatedAt))

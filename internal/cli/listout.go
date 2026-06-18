@@ -50,6 +50,36 @@ func fetchPaged(q url.Values, cursor string, all bool, fetch pageFunc) ([]json.R
 	}
 }
 
+// emitPaged drives a paginated list command end to end: it pages through fetch,
+// projects each item via compact (or passes the raw object under --full), and
+// writes the rows with the "@pagination" trailer. It collapses the
+// fetchPaged → compactRows → emitList(paginationMeta(...)) sequence that every
+// plain paginated list command repeats; callers still pass the fetch closure
+// (the client method legitimately varies) and the compact projection.
+func emitPaged(g *GlobalFlags, q url.Values, cursor string, all bool, fetch pageFunc, compact func(json.RawMessage) (map[string]any, error)) error {
+	items, next, err := fetchPaged(q, cursor, all, fetch)
+	if err != nil {
+		return err
+	}
+	rows, err := compactRows(items, g.Full, compact)
+	if err != nil {
+		return err
+	}
+	return emitList(g, rows, paginationMeta(next))
+}
+
+// emitRows projects a fetched (unpaginated) item slice and writes it with no
+// pagination trailer — the compactRows → emitList(..., nil) tail shared by the
+// list commands whose endpoint returns all items at once. Callers fetch (and
+// optionally filter) items first, then hand them here.
+func emitRows(g *GlobalFlags, items []json.RawMessage, compact func(json.RawMessage) (map[string]any, error)) error {
+	rows, err := compactRows(items, g.Full, compact)
+	if err != nil {
+		return err
+	}
+	return emitList(g, rows, nil)
+}
+
 // addPageFlags registers the shared pagination flags on a list command,
 // returning pointers to the cursor and all values.
 func addPageFlags(cmd *cobra.Command) (cursor *string, all *bool) {

@@ -30,11 +30,7 @@ func registerWebhook(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			rows, err := compactRows(items, g.Full, compactWebhook)
-			if err != nil {
-				return err
-			}
-			return emitList(g, rows, nil)
+			return emitRows(g, items, compactWebhook)
 		},
 	}
 	list.Flags().StringVar(&project, "project", "", "filter to webhooks targeting this project id")
@@ -61,10 +57,10 @@ func compactWebhook(raw json.RawMessage) (map[string]any, error) {
 	}
 	m := map[string]any{"id": w.ID, "url": w.URL}
 	if len(w.Events) > 0 {
-		m["events"] = toAnySlice(w.Events)
+		m["events"] = w.Events
 	}
 	if len(w.ProjectIDs) > 0 {
-		m["project_ids"] = toAnySlice(w.ProjectIDs)
+		m["project_ids"] = w.ProjectIDs
 	}
 	putIf(m, "created", msToRFC3339(w.CreatedAt))
 	putIf(m, "updated", msToRFC3339(w.UpdatedAt))

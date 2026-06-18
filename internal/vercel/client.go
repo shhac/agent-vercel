@@ -101,9 +101,7 @@ func (c *Client) Do(ctx context.Context, method, path string, query url.Values, 
 		bodyBytes = b
 	}
 
-	u := *c.base
-	u.Path = strings.TrimRight(c.base.Path, "/") + "/" + strings.TrimLeft(path, "/")
-	u.RawQuery = c.withScope(query).Encode()
+	u := c.buildURL(path, query)
 
 	var lastErr error
 	for attempt := 0; attempt <= c.cfg.MaxRetries; attempt++ {
@@ -123,8 +121,7 @@ func (c *Client) Do(ctx context.Context, method, path string, query url.Values, 
 		if err != nil {
 			return nil, agenterrors.Wrap(err, agenterrors.FixableByAgent)
 		}
-		req.Header.Set("Authorization", "Bearer "+c.cfg.Token)
-		req.Header.Set("User-Agent", c.cfg.UserAgent)
+		c.setAuthHeaders(req)
 		if bodyBytes != nil {
 			req.Header.Set("Content-Type", "application/json")
 		}
@@ -156,6 +153,22 @@ func (c *Client) Do(ctx context.Context, method, path string, query url.Values, 
 		lastErr = agenterrors.New("request failed after retries", agenterrors.FixableByRetry)
 	}
 	return nil, lastErr
+}
+
+// buildURL joins the request path onto the base URL and encodes the query with
+// scope (teamId/slug) applied. Returns the url.URL so callers can use both
+// String() (request target) and RequestURI() (debug logging).
+func (c *Client) buildURL(path string, query url.Values) url.URL {
+	u := *c.base
+	u.Path = strings.TrimRight(c.base.Path, "/") + "/" + strings.TrimLeft(path, "/")
+	u.RawQuery = c.withScope(query).Encode()
+	return u
+}
+
+// setAuthHeaders applies the Bearer token and User-Agent shared by every request.
+func (c *Client) setAuthHeaders(req *http.Request) {
+	req.Header.Set("Authorization", "Bearer "+c.cfg.Token)
+	req.Header.Set("User-Agent", c.cfg.UserAgent)
 }
 
 // withScope adds teamId or slug to the query when a scope is set. A "team_"
@@ -256,9 +269,7 @@ func retryAfter(resp *http.Response) (time.Duration, bool) {
 // query params, so a plain buffered read would block until the client timeout
 // and lose partial data; this bounds the read and keeps whatever arrived.
 func (c *Client) StreamLines(ctx context.Context, path string, query url.Values, window time.Duration, maxLines int) ([]json.RawMessage, error) {
-	u := *c.base
-	u.Path = strings.TrimRight(c.base.Path, "/") + "/" + strings.TrimLeft(path, "/")
-	u.RawQuery = c.withScope(query).Encode()
+	u := c.buildURL(path, query)
 
 	ctx, cancel := context.WithTimeout(ctx, window)
 	defer cancel()
@@ -266,8 +277,7 @@ func (c *Client) StreamLines(ctx context.Context, path string, query url.Values,
 	if err != nil {
 		return nil, agenterrors.Wrap(err, agenterrors.FixableByAgent)
 	}
-	req.Header.Set("Authorization", "Bearer "+c.cfg.Token)
-	req.Header.Set("User-Agent", c.cfg.UserAgent)
+	c.setAuthHeaders(req)
 	c.debugf("GET %s (stream, window=%s)", u.RequestURI(), window)
 
 	resp, err := c.http.Do(req)

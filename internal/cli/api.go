@@ -40,15 +40,9 @@ func registerAPI(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return agenterrors.Newf(agenterrors.FixableByAgent, "invalid --query %q: %v", query, err)
 			}
-			var payload any
-			if body == "-" {
-				b, err := io.ReadAll(os.Stdin)
-				if err != nil {
-					return agenterrors.Wrap(err, agenterrors.FixableByAgent)
-				}
-				payload = json.RawMessage(b)
-			} else if body != "" {
-				payload = json.RawMessage(body)
+			payload, err := readAPIBody(body)
+			if err != nil {
+				return err
 			}
 			r, err := resolveClient(g)
 			if err != nil {
@@ -70,4 +64,20 @@ func registerAPI(root *cobra.Command, g *GlobalFlags) {
 
 	cmd.AddCommand(call)
 	root.AddCommand(cmd)
+}
+
+// readAPIBody resolves the --body flag to a request payload: stdin when "-", nil
+// when empty, otherwise the raw JSON string.
+func readAPIBody(body string) (any, error) {
+	if body == "-" {
+		b, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return nil, agenterrors.Wrap(err, agenterrors.FixableByAgent)
+		}
+		return json.RawMessage(b), nil
+	}
+	if body == "" {
+		return nil, nil
+	}
+	return json.RawMessage(body), nil
 }

@@ -56,18 +56,10 @@ func scopeMembersCmd(g *GlobalFlags) *cobra.Command {
 			if limit > 0 {
 				q.Set("limit", strconv.Itoa(limit))
 			}
-			items, next, err := fetchPaged(q, *cursor, *all, func(q url.Values) ([]json.RawMessage, *int64, error) {
+			return emitPaged(g, q, *cursor, *all, func(q url.Values) ([]json.RawMessage, *int64, error) {
 				it, p, e := r.client.TeamMembers(cmd.Context(), teamID, q)
 				return it, p.Next, e
-			})
-			if err != nil {
-				return err
-			}
-			rows, err := compactRows(items, g.Full, compactMember)
-			if err != nil {
-				return err
-			}
-			return emitList(g, rows, paginationMeta(next))
+			}, compactMember)
 		},
 	}
 	cursor, all = addPageFlags(cmd)
