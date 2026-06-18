@@ -93,6 +93,6 @@ func registerScope(root *cobra.Command, g *GlobalFlags) {
 		},
 	}
 
-	cmd.AddCommand(list, current, setDefault)
+	cmd.AddCommand(list, current, setDefault, scopeMembersCmd(g), scopeMemberCmd(g))
 	root.AddCommand(cmd)
 }

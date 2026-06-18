@@ -76,6 +76,8 @@ domain is a possible later addition.
 | `scope list` (`ls`) | | | `GET /v2/teams` (live; names/slugs are used directly, no resolution cache) |
 | `scope current` | | | active scope + default credential |
 | `scope set-default <slug>` | | | empty arg → personal account |
+| `scope members` | `--limit`, `--cursor`, `--all` | | NDJSON; members of the active team scope — uid, username, email, role, confirmed; `GET /v2/teams/{id}/members`. The scope slug is resolved to a team id first; the personal account has no members |
+| `scope member <id\|email\|username>` | | | one member matched client-side (the endpoint has no per-member GET) |
 | `deployment list` | `--project`, `--state`, `--target`, `--custom-env`, `--branch`, `--sha`, `--user`, `--since`, `--until`, `--limit`, `--cursor`, `--all` | | NDJSON; org/scope-wide; `GET /v6/deployments`. `--custom-env` filters client-side (the API has no custom-env param) |
 | `deployment get <id\|url>` | | | compact: state, target, creator, commit, urls, timings, `errorCode` |
 | `deployment checks <id\|url>` | `--blocking`, `--failed` | | NDJSON; CI/integration checks on the deploy — name, status, conclusion, blocking; `GET /v1/deployments/{id}/checks`. Filters are client-side. Answers "what's blocking / what failed" |

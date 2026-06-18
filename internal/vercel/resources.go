@@ -47,6 +47,12 @@ func (c *Client) GetDeployment(ctx context.Context, idOrURL string) (json.RawMes
 	return c.Get(ctx, "/v13/deployments/"+url.PathEscape(idOrURL), nil)
 }
 
+// TeamMembers — GET /v2/teams/{teamID}/members. The members of a team (uid,
+// username, email, role, confirmed). Paginated; the items live under "members".
+func (c *Client) TeamMembers(ctx context.Context, teamID string, q url.Values) ([]json.RawMessage, Page, error) {
+	return c.listRaw(ctx, "/v2/teams/"+url.PathEscape(teamID)+"/members", "members", q)
+}
+
 // ListEdgeConfigs — GET /v1/edge-config. The Edge Configs in the scope (each a
 // non-secret key/value store for feature flags, redirects, etc.). The payload
 // may be a bare array or wrapped under "edgeConfigs".

@@ -34,6 +34,8 @@ There is no command that prints the secret. That is intentional.
 | `scope list` (`ls`) | teams the credential can reach (`GET /v2/teams`) |
 | `scope current` | active scope + default credential |
 | `scope set-default <slug>` | empty arg → personal account |
+| `scope members` | `--limit --cursor --all`; members of the active team scope — uid, username, email, role, confirmed. Needs a team scope (not the personal account) |
+| `scope member <id\|email\|username>` | one member, matched client-side |
 
 ## deployment
 

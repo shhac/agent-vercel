@@ -31,6 +31,7 @@ type Team struct {
 type Options struct {
 	User               User
 	Teams              []Team
+	TeamMembers        []map[string]any
 	Deployments        []map[string]any
 	Projects           []map[string]any
 	RollingRelease     map[string]any
@@ -83,6 +84,9 @@ func WithWebhooks(w []map[string]any) Option { return func(o *Options) { o.Webho
 // WithEdgeConfigs overrides the fixture Edge Configs.
 func WithEdgeConfigs(e []map[string]any) Option { return func(o *Options) { o.EdgeConfigs = e } }
 
+// WithTeamMembers overrides the fixture team members.
+func WithTeamMembers(m []map[string]any) Option { return func(o *Options) { o.TeamMembers = m } }
+
 // WithRuntimeLogsHang makes the runtime-logs endpoint hold the connection open
 // after emitting its lines, simulating Vercel's open-ended log stream.
 func WithRuntimeLogsHang() Option { return func(o *Options) { o.RuntimeLogsHang = true } }
@@ -93,6 +97,11 @@ func defaults() *Options {
 		Teams: []Team{
 			{ID: "team_abc", Slug: "acme", Name: "Acme Inc"},
 			{ID: "team_xyz", Slug: "side", Name: "Side Project"},
+		},
+		TeamMembers: []map[string]any{
+			{"uid": "usr_owner", "username": "acme-bot", "email": "bot@acme.com", "role": "OWNER", "confirmed": true, "createdAt": int64(1700000000000)},
+			{"uid": "usr_dev", "username": "dev", "email": "dev@acme.com", "role": "MEMBER", "confirmed": true, "createdAt": int64(1710000000000)},
+			{"uid": "usr_pending", "username": "newbie", "email": "newbie@acme.com", "role": "MEMBER", "confirmed": false, "createdAt": int64(1716000000000)},
 		},
 		Deployments: []map[string]any{
 			{
@@ -243,6 +252,12 @@ func New(opts ...Option) http.Handler {
 
 	mux.HandleFunc("GET /v2/user", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"user": o.User})
+	}))
+	mux.HandleFunc("GET /v2/teams/{id}/members", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"members":    o.TeamMembers,
+			"pagination": map[string]any{"count": len(o.TeamMembers)},
+		})
 	}))
 	mux.HandleFunc("GET /v2/teams", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{

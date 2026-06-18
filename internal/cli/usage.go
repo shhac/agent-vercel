@@ -40,7 +40,7 @@ CORE DOMAINS (see design-docs/cli-design.md)
   billing      charges [--by service|project]   (what is driving spend)
   webhook      list [--project]                  (which events fire where)
   edge-config  list | items <id>                  (live non-secret key/value config)
-  scope        list | current | set-default
+  scope        list | current | set-default | members | member <id>
   auth         add | list | test | set-default | remove | import-cli
   api          call <METHOD> <path>       (raw REST escape hatch)
   config       get | set | list | unset
