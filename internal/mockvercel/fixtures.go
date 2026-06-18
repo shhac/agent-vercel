@@ -108,6 +108,9 @@ func defaults() *Options {
 		Projects: []map[string]any{
 			{
 				"id": "prj_web", "name": "web", "framework": "nextjs", "nodeVersion": "20.x",
+				"rootDirectory":  "apps/web", "outputDirectory": ".next",
+				"buildCommand":   "turbo run build", "installCommand": nil,
+				"commandForIgnoringBuildStep": "npx turbo-ignore",
 				"link":      map[string]any{"org": "acme", "repo": "web", "type": "github", "productionBranch": "main"},
 				"updatedAt": int64(1716206800000),
 				"latestDeployments": []any{map[string]any{
@@ -115,7 +118,7 @@ func defaults() *Options {
 				}},
 			},
 			{
-				"id": "prj_api", "name": "api", "framework": "go",
+				"id": "prj_api", "name": "api", "framework": "go", "paused": true,
 				"updatedAt": int64(1716100000000),
 			},
 		},
@@ -192,8 +195,9 @@ func defaults() *Options {
 		},
 		DomainConfig: map[string]any{
 			"misconfigured":      true,
-			"configuredBy":       nil,
-			"acceptedChallenges": []any{},
+			"configuredBy":       "CNAME",
+			"acceptedChallenges": []any{"dns-01"},
+			"recommendedCNAME":   []any{map[string]any{"rank": 0, "value": "cname.vercel-dns.com"}},
 		},
 		DomainRecords: []map[string]any{
 			{"id": "rec_1", "type": "A", "name": "", "value": "76.76.21.21", "ttl": 60},

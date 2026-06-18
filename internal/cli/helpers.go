@@ -70,6 +70,15 @@ func putIf(m map[string]any, key, val string) {
 	}
 }
 
+// putPtr sets a map entry from a *string only when it is non-nil and non-empty.
+// Vercel returns null for build-config fields left at the framework default, so
+// a nil pointer means "default" and is omitted from the projection.
+func putPtr(m map[string]any, key string, v *string) {
+	if v != nil {
+		putIf(m, key, *v)
+	}
+}
+
 // metaStr returns the first non-empty string value among the given meta keys.
 func metaStr(meta map[string]any, keys ...string) string {
 	for _, k := range keys {

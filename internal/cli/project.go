@@ -172,12 +172,18 @@ func compactCrons(raw json.RawMessage) (map[string]any, error) {
 }
 
 type rawProject struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Framework   string `json:"framework"`
-	NodeVersion string `json:"nodeVersion"`
-	UpdatedAt   int64  `json:"updatedAt"`
-	Link        struct {
+	ID              string  `json:"id"`
+	Name            string  `json:"name"`
+	Framework       string  `json:"framework"`
+	NodeVersion     string  `json:"nodeVersion"`
+	RootDirectory   *string `json:"rootDirectory"`
+	OutputDirectory *string `json:"outputDirectory"`
+	BuildCommand    *string `json:"buildCommand"`
+	InstallCommand  *string `json:"installCommand"`
+	IgnoreCommand   *string `json:"commandForIgnoringBuildStep"`
+	Paused          bool    `json:"paused"`
+	UpdatedAt       int64   `json:"updatedAt"`
+	Link            struct {
 		Org              string `json:"org"`
 		Repo             string `json:"repo"`
 		Type             string `json:"type"`
@@ -197,8 +203,16 @@ func compactProject(raw json.RawMessage) (map[string]any, error) {
 		return nil, agenterrors.Wrap(err, agenterrors.FixableByAgent)
 	}
 	m := map[string]any{"id": p.ID, "name": p.Name}
+	if p.Paused {
+		m["paused"] = true
+	}
 	putIf(m, "framework", p.Framework)
 	putIf(m, "node_version", p.NodeVersion)
+	putPtr(m, "root_directory", p.RootDirectory)
+	putPtr(m, "output_directory", p.OutputDirectory)
+	putPtr(m, "build_command", p.BuildCommand)
+	putPtr(m, "install_command", p.InstallCommand)
+	putPtr(m, "ignore_command", p.IgnoreCommand)
 	if p.Link.Org != "" && p.Link.Repo != "" {
 		m["repo"] = p.Link.Org + "/" + p.Link.Repo
 	}

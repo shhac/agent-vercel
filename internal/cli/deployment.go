@@ -181,11 +181,22 @@ type rawDeployment struct {
 		Username string `json:"username"`
 		Email    string `json:"email"`
 	} `json:"creator"`
-	Meta              map[string]any `json:"meta"`
-	OomReport         string         `json:"oomReport"`
-	ChecksConclusion  string         `json:"checksConclusion"`
-	ChecksState       string         `json:"checksState"`
-	CustomEnvironment struct {
+	Meta                     map[string]any `json:"meta"`
+	OomReport                string         `json:"oomReport"`
+	ChecksConclusion         string         `json:"checksConclusion"`
+	ChecksState              string         `json:"checksState"`
+	BuildSkipped             bool           `json:"buildSkipped"`
+	IsFirstBranchDeployment  bool           `json:"isFirstBranchDeployment"`
+	InConcurrentQueue        bool           `json:"isInConcurrentBuildsQueue"`
+	InSystemQueue            bool           `json:"isInSystemBuildsQueue"`
+	ErrorStep                string         `json:"errorStep"`
+	ErrorLink                string         `json:"errorLink"`
+	ReadyStateReason         string         `json:"readyStateReason"`
+	Source                   string         `json:"source"`
+	BuildingAt               int64          `json:"buildingAt"`
+	Ready                    int64          `json:"ready"`
+	BuildContainerFinishedAt int64          `json:"buildContainerFinishedAt"`
+	CustomEnvironment        struct {
 		ID   string `json:"id"`
 		Slug string `json:"slug"`
 	} `json:"customEnvironment"`
@@ -245,13 +256,39 @@ func compactDeployment(raw json.RawMessage) (map[string]any, error) {
 	}
 	putIf(m, "custom_environment", d.CustomEnvironment.Slug)
 	putIf(m, "ready_substate", d.ReadySubstate)
+	if d.BuildSkipped {
+		m["build_skipped"] = true
+	}
+	if d.IsFirstBranchDeployment {
+		m["first_branch_deployment"] = true
+	}
+	switch {
+	case d.InConcurrentQueue:
+		m["queued"] = "concurrent_builds"
+	case d.InSystemQueue:
+		m["queued"] = "system_builds"
+	}
 	putIf(m, "inspector_url", d.InspectorURL)
 	putIf(m, "error_code", d.ErrorCode)
+	putIf(m, "error_step", d.ErrorStep)
+	putIf(m, "error_link", d.ErrorLink)
 	putIf(m, "error_message", d.ErrorMessage)
+	putIf(m, "state_reason", d.ReadyStateReason)
 	if d.OomReport != "" {
 		m["oom"] = true
 	}
 	putIf(m, "checks", firstNonEmpty(d.ChecksConclusion, d.ChecksState))
+	putIf(m, "source", d.Source)
+	if d.BuildingAt > 0 && created > 0 && d.BuildingAt >= created {
+		m["queue_wait_ms"] = d.BuildingAt - created
+	}
+	finished := d.Ready
+	if finished == 0 {
+		finished = d.BuildContainerFinishedAt
+	}
+	if finished > 0 && d.BuildingAt > 0 && finished >= d.BuildingAt {
+		m["build_duration_ms"] = finished - d.BuildingAt
+	}
 	putIf(m, "created", msToRFC3339(created))
 	putIf(m, "creator", d.Creator.Username)
 	putIf(m, "branch", metaStr(d.Meta, "githubCommitRef", "gitlabCommitRef", "bitbucketCommitRef"))

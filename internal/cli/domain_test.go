@@ -44,6 +44,14 @@ func TestDomainInspect(t *testing.T) {
 	if _, ok := m["intended_nameservers"]; !ok {
 		t.Fatalf("inspect should fold in intended_nameservers: %v", m)
 	}
+	// SSL/ACME readiness fields from the domain-config payload.
+	if m["configured_by"] != "CNAME" {
+		t.Fatalf("inspect should surface configured_by: %v", m)
+	}
+	ch, ok := m["accepted_challenges"].([]any)
+	if !ok || len(ch) != 1 || ch[0] != "dns-01" {
+		t.Fatalf("inspect should surface accepted_challenges: %v", m)
+	}
 }
 
 func TestDomainRecords(t *testing.T) {

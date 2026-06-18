@@ -64,10 +64,27 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 			}
 			out := map[string]any{"domain": args[0]}
 			var c struct {
-				Misconfigured bool `json:"misconfigured"`
+				Misconfigured      bool            `json:"misconfigured"`
+				ConfiguredBy       string          `json:"configuredBy"`
+				AcceptedChallenges []string        `json:"acceptedChallenges"`
+				RecommendedIPv4    json.RawMessage `json:"recommendedIPv4"`
+				RecommendedCNAME   json.RawMessage `json:"recommendedCNAME"`
 			}
 			_ = json.Unmarshal(cfg, &c)
 			out["misconfigured"] = c.Misconfigured
+			// SSL/ACME readiness: configuredBy shows how Vercel resolves the
+			// domain; acceptedChallenges (empty ⇒ a cert cannot be issued) and the
+			// recommended values are the remediation path.
+			putIf(out, "configured_by", c.ConfiguredBy)
+			if len(c.AcceptedChallenges) > 0 {
+				out["accepted_challenges"] = c.AcceptedChallenges
+			}
+			if len(c.RecommendedIPv4) > 0 && string(c.RecommendedIPv4) != "null" {
+				out["recommended_ipv4"] = c.RecommendedIPv4
+			}
+			if len(c.RecommendedCNAME) > 0 && string(c.RecommendedCNAME) != "null" {
+				out["recommended_cname"] = c.RecommendedCNAME
+			}
 			// The actionable bit — intended vs actual nameservers, verified —
 			// lives on the domain record; fold it in best-effort.
 			if raw, err := r.client.GetDomain(cmd.Context(), args[0]); err == nil {

@@ -118,6 +118,49 @@ func TestProjectListAndGet(t *testing.T) {
 	if m["repo"] != "acme/web" || m["production_branch"] != "main" || m["node_version"] != "20.x" {
 		t.Fatalf("project get enrichment missing: %v", m)
 	}
+	// build-config surfaced; installCommand is null in the fixture → omitted.
+	if m["root_directory"] != "apps/web" || m["build_command"] != "turbo run build" || m["ignore_command"] != "npx turbo-ignore" {
+		t.Fatalf("project get build-config missing: %v", m)
+	}
+	if _, hasInstall := m["install_command"]; hasInstall {
+		t.Fatalf("null installCommand should be omitted: %v", m)
+	}
+
+	// prj_api is paused → surfaced as paused:true.
+	apiOut, _, err := execCLI(t, srv.URL, "project", "get", "api")
+	if err != nil {
+		t.Fatalf("get api err: %v", err)
+	}
+	if decodeJSON(t, apiOut)["paused"] != true {
+		t.Fatalf("paused project should report paused:true: %s", apiOut)
+	}
+}
+
+func TestCompactDeploymentSurfacesBuildTriageFields(t *testing.T) {
+	raw := []byte(`{
+		"uid":"dpl_x","name":"web","projectId":"prj_web","readyState":"QUEUED",
+		"buildSkipped":true,"isFirstBranchDeployment":true,
+		"isInConcurrentBuildsQueue":true,
+		"errorStep":"build","errorLink":"https://vercel.com/docs/errors/x",
+		"readyStateReason":"build exceeded 45 minutes","source":"git",
+		"created":1000,"buildingAt":1500,"ready":4500
+	}`)
+	m, err := compactDeployment(raw)
+	if err != nil {
+		t.Fatalf("compactDeployment: %v", err)
+	}
+	if m["build_skipped"] != true || m["first_branch_deployment"] != true {
+		t.Fatalf("skip flags missing: %v", m)
+	}
+	if m["queued"] != "concurrent_builds" {
+		t.Fatalf("queue reason = %v", m["queued"])
+	}
+	if m["error_step"] != "build" || m["state_reason"] != "build exceeded 45 minutes" || m["source"] != "git" {
+		t.Fatalf("error/source fields missing: %v", m)
+	}
+	if m["queue_wait_ms"] != int64(500) || m["build_duration_ms"] != int64(3000) {
+		t.Fatalf("derived timing wrong: queue_wait=%v build=%v", m["queue_wait_ms"], m["build_duration_ms"])
+	}
 }
 
 func metaCursor(t *testing.T, ndjson string) (string, bool) {
