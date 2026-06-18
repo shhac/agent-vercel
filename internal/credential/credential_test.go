@@ -39,6 +39,38 @@ func TestUpsertStoresSecretInKeychainNotFile(t *testing.T) {
 	}
 }
 
+func TestUpsertMergesAndRotatesExistingLabel(t *testing.T) {
+	s, kc := newTestStore(t)
+	if err := s.Upsert(Auth{Label: "work", Secret: "tok-1", UserID: "usr_1", Username: "bot"}); err != nil {
+		t.Fatalf("first upsert: %v", err)
+	}
+
+	// Re-add the same label with a rotated secret and no profile fields: the
+	// merge branch must replace the secret but preserve the existing
+	// UserID/Username (the auth-rotation path).
+	if err := s.Upsert(Auth{Label: "work", Secret: "tok-2"}); err != nil {
+		t.Fatalf("second upsert: %v", err)
+	}
+
+	creds, err := s.Load()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if len(creds.Auths) != 1 {
+		t.Fatalf("auths = %+v; want exactly one (merge, not append)", creds.Auths)
+	}
+	if got, ok := kc.Get("token:work"); !ok || got != "tok-2" {
+		t.Fatalf("rotated keychain secret = %q, %v; want tok-2, true", got, ok)
+	}
+	a := creds.Auths[0]
+	if a.Secret != "tok-2" || a.UserID != "usr_1" || a.Username != "bot" {
+		t.Fatalf("merged auth = %+v; want secret tok-2 with usr_1/bot preserved", a)
+	}
+	if creds.DefaultAuth != "work" {
+		t.Fatalf("default auth = %q; want work (unchanged)", creds.DefaultAuth)
+	}
+}
+
 func TestUpsertDefaultsTypeToToken(t *testing.T) {
 	s, _ := newTestStore(t)
 	_ = s.Upsert(Auth{Label: "x", Secret: "t"})

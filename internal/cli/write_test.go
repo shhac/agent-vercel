@@ -96,6 +96,49 @@ func TestRedeployWithYes(t *testing.T) {
 	}
 }
 
+func TestDomainAddWithYes(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	// --redirect/--git-branch must be assembled into the POST body; the mock
+	// reflects them so the wire shaping is observable.
+	out, _, err := execCLI(t, srv.URL, "domain", "add", "web", "new.example.com",
+		"--redirect", "old.example.com", "--git-branch", "main", "--yes")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	m := decodeJSON(t, out)
+	if m["redirect"] != "old.example.com" || m["gitBranch"] != "main" {
+		t.Fatalf("domain add body shaping = %v; want redirect+gitBranch echoed", m)
+	}
+}
+
+func TestDomainRmWithYes(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	out, _, err := execCLI(t, srv.URL, "domain", "rm", "web", "example.com", "--yes")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if m := decodeJSON(t, out); m["removed"] != "example.com" || m["project"] != "web" {
+		t.Fatalf("domain rm = %v", m)
+	}
+}
+
+func TestAliasRmWithYes(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	out, _, err := execCLI(t, srv.URL, "alias", "rm", "alias_1", "--yes")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if m := decodeJSON(t, out); m["removed"] != "alias_1" {
+		t.Fatalf("alias rm = %v", m)
+	}
+}
+
 func TestEnvRmResolvesIDWithYes(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New())
 	defer srv.Close()

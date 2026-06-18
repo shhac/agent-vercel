@@ -10,6 +10,21 @@ import (
 	"github.com/shhac/agent-vercel/internal/mockvercel"
 )
 
+func TestBuildDotenv(t *testing.T) {
+	envs := []rawEnv{
+		{Key: "B_KEY", Target: []string{"production"}, Value: "two"},
+		{Key: "A_KEY", Target: []string{"production"}, Value: `va"l`},
+		{Key: "PREVIEW_ONLY", Target: []string{"preview"}, Value: "x"},
+		{Key: "A_KEY", Target: []string{"production"}, Value: "later-wins"},
+	}
+	body, count := buildDotenv(envs, "production")
+	// Filtered to production (PREVIEW_ONLY dropped), sorted, last value wins.
+	want := "A_KEY=\"later-wins\"\nB_KEY=\"two\"\n"
+	if body != want || count != 2 {
+		t.Fatalf("buildDotenv = %q (count %d); want %q (count 2)", body, count, want)
+	}
+}
+
 func TestEnvListNoValueWithoutDecrypt(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New())
 	defer srv.Close()
