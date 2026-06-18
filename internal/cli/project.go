@@ -91,8 +91,95 @@ func registerProject(root *cobra.Command, g *GlobalFlags) {
 		},
 	}
 
-	cmd.AddCommand(list, get, crons, customEnvs)
+	protection := &cobra.Command{
+		Use:   "protection <id|name>",
+		Short: "Show a project's deployment protection (why a preview/prod URL returns 401)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return emitOne(g, func(c *vercel.Client) (json.RawMessage, error) {
+				return c.GetProject(cmd.Context(), args[0])
+			}, compactProtection)
+		},
+	}
+
+	var diff bool
+	routes := &cobra.Command{
+		Use:   "routes <id|name>",
+		Short: "Show a project's authored CDN routing rules (redirects/rewrites/headers); --diff for staged-vs-live",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			q := url.Values{}
+			if diff {
+				q.Set("diff", "true")
+			}
+			raw, err := r.client.ProjectRoutes(cmd.Context(), args[0], q)
+			if err != nil {
+				return err
+			}
+			return printRaw(g, raw)
+		},
+	}
+	routes.Flags().BoolVar(&diff, "diff", false, "show the staged-vs-production routing-rule diff")
+
+	cmd.AddCommand(list, get, crons, customEnvs, protection, routes)
 	root.AddCommand(cmd)
+}
+
+// compactProtection projects a project's deployment-protection config: which
+// gate is on (Vercel Authentication / Password / Trusted IPs) and at what scope.
+// It never emits a bypass secret — only whether an automation bypass exists.
+func compactProtection(raw json.RawMessage) (map[string]any, error) {
+	type gate struct {
+		DeploymentType string `json:"deploymentType"`
+	}
+	var p struct {
+		ID                 string                     `json:"id"`
+		Name               string                     `json:"name"`
+		SsoProtection      *gate                      `json:"ssoProtection"`
+		PasswordProtection *gate                      `json:"passwordProtection"`
+		TrustedIps         *struct {
+			DeploymentType string            `json:"deploymentType"`
+			Addresses      []json.RawMessage `json:"addresses"`
+			ProtectionMode string            `json:"protectionMode"`
+		} `json:"trustedIps"`
+		ProtectionBypass map[string]json.RawMessage `json:"protectionBypass"`
+	}
+	if err := json.Unmarshal(raw, &p); err != nil {
+		return nil, wrapAgent(err)
+	}
+	m := map[string]any{"id": p.ID}
+	putIf(m, "name", p.Name)
+	protected := false
+	if p.SsoProtection != nil {
+		m["vercel_authentication"] = scopeOf(p.SsoProtection.DeploymentType)
+		protected = true
+	}
+	if p.PasswordProtection != nil {
+		m["password_protection"] = scopeOf(p.PasswordProtection.DeploymentType)
+		protected = true
+	}
+	if p.TrustedIps != nil {
+		m["trusted_ips"] = map[string]any{"scope": scopeOf(p.TrustedIps.DeploymentType), "addresses": len(p.TrustedIps.Addresses)}
+		protected = true
+	}
+	if len(p.ProtectionBypass) > 0 {
+		m["automation_bypass"] = true
+	}
+	m["protected"] = protected
+	return m, nil
+}
+
+// scopeOf normalizes a protection deploymentType to a readable scope, defaulting
+// blanks to "all".
+func scopeOf(deploymentType string) string {
+	if deploymentType == "" {
+		return "all"
+	}
+	return deploymentType
 }
 
 type rawCustomEnv struct {

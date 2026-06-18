@@ -90,6 +90,9 @@ func New(opts ...Option) http.Handler {
 	mux.HandleFunc("GET /v1/projects/{idOrName}/crons", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, o.ProjectCrons)
 	}))
+	mux.HandleFunc("GET /v1/projects/{id}/routes", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, o.ProjectRoutes)
+	}))
 	mux.HandleFunc("GET /v9/projects/{idOrName}/custom-environments", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"environments": o.CustomEnvironments})
 	}))

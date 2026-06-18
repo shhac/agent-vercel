@@ -24,6 +24,7 @@ func registerDeployment(root *cobra.Command, g *GlobalFlags) {
 		deploymentListCmd(g),
 		deploymentGetCmd(g),
 		deploymentChecksCmd(g),
+		deploymentRoutesCmd(g),
 		deploymentCurrentCmd(g),
 		deploymentLogsCmd(g),
 		deploymentRuntimeLogsCmd(g),
@@ -104,6 +105,34 @@ func deploymentGetCmd(g *GlobalFlags) *cobra.Command {
 			return emitOne(g, func(c *vercel.Client) (json.RawMessage, error) {
 				return c.GetDeployment(cmd.Context(), cleanRef(args[0]))
 			}, compactDeployment)
+		},
+	}
+}
+
+func deploymentRoutesCmd(g *GlobalFlags) *cobra.Command {
+	return &cobra.Command{
+		Use:   "routes <id|url>",
+		Short: "Show the compiled routing a deployment is running (redirects/rewrites/headers)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			r, err := resolveClient(g)
+			if err != nil {
+				return err
+			}
+			raw, err := r.client.GetDeployment(cmd.Context(), cleanRef(args[0]))
+			if err != nil {
+				return err
+			}
+			var d struct {
+				Routes json.RawMessage `json:"routes"`
+			}
+			if err := json.Unmarshal(raw, &d); err != nil {
+				return wrapAgent(err)
+			}
+			if len(d.Routes) == 0 || string(d.Routes) == "null" {
+				return printSingle(g, map[string]any{"deployment": args[0], "routes": []any{}})
+			}
+			return printRaw(g, d.Routes)
 		},
 	}
 }

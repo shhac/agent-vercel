@@ -103,6 +103,15 @@ func (c *Client) GetProject(ctx context.Context, idOrName string) (json.RawMessa
 	return c.Get(ctx, "/v9/projects/"+url.PathEscape(idOrName), nil)
 }
 
+// ProjectRoutes — GET /v1/projects/{id}/routes. The project's authored CDN-level
+// routing rules (redirects/rewrites/headers set in the dashboard/Terraform, not
+// in code) plus a version block (staging vs live). q may carry diff=true for the
+// staged-vs-production diff, or filter/q/versionId. Spec-documented; not
+// live-validated.
+func (c *Client) ProjectRoutes(ctx context.Context, project string, q url.Values) (json.RawMessage, error) {
+	return c.Get(ctx, "/v1/projects/"+url.PathEscape(project)+"/routes", q)
+}
+
 // ProjectCustomEnvironments — GET /v9/projects/{idOrName}/custom-environments.
 // The custom (non-standard) deployment environments a project defines, e.g. a
 // "staging" env bound to a branch. The payload wraps them under

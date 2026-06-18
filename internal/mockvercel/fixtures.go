@@ -41,6 +41,7 @@ type Options struct {
 	FirewallConfig     map[string]any
 	AttackStatus       map[string]any
 	FirewallBypass     map[string]any
+	ProjectRoutes      map[string]any
 	Drains             []map[string]any
 	// RuntimeLogsHang, when set, makes the runtime-logs handler hold the
 	// connection open after emitting its lines — simulating Vercel's
@@ -97,6 +98,10 @@ func defaults() *Options {
 				"inspectorUrl": "https://vercel.com/acme/web/ready", "created": int64(1716206800000),
 				"creator": map[string]any{"username": "acme-bot", "email": "bot@acme.com"},
 				"meta":    map[string]any{"githubCommitRef": "main", "githubCommitSha": "abc123", "githubCommitMessage": "ship it"},
+				"routes": []any{
+					map[string]any{"src": "/old", "headers": map[string]any{"Location": "/new"}, "status": 308},
+					map[string]any{"handle": "filesystem"},
+				},
 			},
 			{
 				"uid": "dpl_err", "name": "web", "projectId": "prj_web",
@@ -115,6 +120,9 @@ func defaults() *Options {
 				"rootDirectory":  "apps/web", "outputDirectory": ".next",
 				"buildCommand":   "turbo run build", "installCommand": nil,
 				"commandForIgnoringBuildStep": "npx turbo-ignore",
+				"ssoProtection":   map[string]any{"deploymentType": "preview"},
+				"trustedIps":      map[string]any{"deploymentType": "all", "addresses": []any{map[string]any{"value": "203.0.113.0/24"}}, "protectionMode": "additional"},
+				"protectionBypass": map[string]any{"abc123": map[string]any{"scope": "automation-bypass"}},
 				"link":      map[string]any{"org": "acme", "repo": "web", "type": "github", "productionBranch": "main"},
 				"updatedAt": int64(1716206800000),
 				"latestDeployments": []any{map[string]any{
@@ -260,6 +268,12 @@ func defaults() *Options {
 			"result": []any{
 				map[string]any{"domain": "web.example.com", "sourceIp": "198.51.100.9", "allSources": false},
 			},
+		},
+		ProjectRoutes: map[string]any{
+			"routes": []any{
+				map[string]any{"id": "route_1", "name": "blog-redirect", "route": map[string]any{"action": "redirect", "src": "/blog/:slug", "dest": "/news/:slug", "statusCode": 308}},
+			},
+			"version": map[string]any{"isStaging": false, "isLive": true, "ruleCount": 1, "lastModified": int64(1716206800000)},
 		},
 		Drains: []map[string]any{
 			{
