@@ -69,12 +69,12 @@ agent-vercel project custom-environments my-app         # discover custom envs (
 agent-vercel env diff my-app                            # prod-vs-preview env var diff
 agent-vercel env shared list                            # team-level shared env vars (across projects)
 agent-vercel domain inspect example.com                 # missing DNS record / cert state
-agent-vercel domain certs --expiring 30                 # certs expiring within 30 days
+agent-vercel domain cert list --expiring 30             # certs expiring within 30 days
 agent-vercel alias list dpl_…                           # aliases + protection state
 agent-vercel billing charges --by service               # what is driving spend (last 30d)
 agent-vercel webhook list --project prj_…               # which events fire where
 agent-vercel edge-config items ecfg_…                   # live feature flags / config values
-agent-vercel --scope my-team scope members              # who has access to the team
+agent-vercel --scope my-team scope member list          # who has access to the team
 ```
 
 `deployment list` is **cross-project** and filterable — the main thing the

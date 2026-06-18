@@ -35,12 +35,12 @@ CORE DOMAINS (see design-docs/cli-design.md)
   deployment   list | get | checks | logs | runtime-logs | current | promote* | rollback* | cancel* | redeploy*
   project      list | get | crons | custom-environments
   env          list | diff | get | pull | shared list/get | set* | rm*
-  domain       list | get | inspect | records | cert <id> | certs | verify* | add* | rm*
+  domain       list | get | inspect | records | cert list/get | verify* | add* | rm*
   alias        list | set* | rm* | bypass*
   billing      charges [--by service|project]   (what is driving spend)
   webhook      list [--project]                  (which events fire where)
   edge-config  list | items <id>                  (live non-secret key/value config)
-  scope        list | current | set-default | members | member <id>
+  scope        list | current | set-default | member list/get
   auth         add | list | test | set-default | remove | import-cli
   api          call <METHOD> <path>       (raw REST escape hatch)
   config       get | set | list | unset

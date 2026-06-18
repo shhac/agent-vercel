@@ -92,7 +92,7 @@ func TestDomainCert(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New())
 	defer srv.Close()
 
-	out, _, err := execCLI(t, srv.URL, "domain", "cert", "cert_1")
+	out, _, err := execCLI(t, srv.URL, "domain", "cert", "get", "cert_1")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

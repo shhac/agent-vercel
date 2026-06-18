@@ -76,8 +76,8 @@ domain is a possible later addition.
 | `scope list` (`ls`) | | | `GET /v2/teams` (live; names/slugs are used directly, no resolution cache) |
 | `scope current` | | | active scope + default credential |
 | `scope set-default <slug>` | | | empty arg → personal account |
-| `scope members` | `--limit`, `--cursor`, `--all` | | NDJSON; members of the active team scope — uid, username, email, role, confirmed; `GET /v2/teams/{id}/members`. The scope slug is resolved to a team id first; the personal account has no members |
-| `scope member <id\|email\|username>` | | | one member matched client-side (the endpoint has no per-member GET) |
+| `scope member list` | `--limit`, `--cursor`, `--all` | | NDJSON; members of the active team scope — uid, username, email, role, confirmed; `GET /v2/teams/{id}/members`. The scope slug is resolved to a team id first; the personal account has no members |
+| `scope member get <id\|email\|username>` | | | one member matched client-side (the endpoint has no per-member GET) |
 | `deployment list` | `--project`, `--state`, `--target`, `--custom-env`, `--branch`, `--sha`, `--user`, `--since`, `--until`, `--limit`, `--cursor`, `--all` | | NDJSON; org/scope-wide; `GET /v6/deployments`. `--custom-env` filters client-side (the API has no custom-env param) |
 | `deployment get <id\|url>` | | | compact: state, target, creator, commit, urls, timings, `errorCode` |
 | `deployment checks <id\|url>` | `--blocking`, `--failed` | | NDJSON; CI/integration checks on the deploy — name, status, conclusion, blocking; `GET /v1/deployments/{id}/checks`. Filters are client-side. Answers "what's blocking / what failed" |
@@ -107,8 +107,8 @@ domain is a possible later addition.
 | `domain verify <domain> --project <p>` | | `--yes` | `POST /v9/projects/{id}/domains/{d}/verify` |
 | `domain add <project> <domain>` | `--redirect`, `--git-branch` | `--yes` | |
 | `domain rm <project> <domain>` | | `--yes` | |
-| `domain cert <id>` | | | `GET /v8/certs/{id}` (expiry, autoRenew, cns) |
-| `domain certs` | `--expiring <days>` | | NDJSON; the scope's certs for bulk expiry/renewal triage; `--expiring` filters to certs expiring within N days (0 = already expired). `GET /v9/certs`. **Spec-plausible, not live-validated** — Vercel may not expose a scope-wide certs list (cf. the absent scope-wide alias list); if it 404s, use `domain cert <id>` per-id |
+| `domain cert get <id>` | | | `GET /v8/certs/{id}` (expiry, autoRenew, cns) |
+| `domain cert list` | `--expiring <days>` | | NDJSON; the scope's certs for bulk expiry/renewal triage; `--expiring` filters to certs expiring within N days (0 = already expired). `GET /v9/certs`. **Spec-plausible, not live-validated** — Vercel may not expose a scope-wide certs list (cf. the absent scope-wide alias list); if it 404s, use `domain cert get <id>` per-id |
 | `alias list <deployment>` | `--cursor`, `--all` | | `GET /v2/deployments/{id}/aliases`; surfaces `protection_bypass`. (No scope-wide alias-list endpoint exists — `/v4/aliases` is in the OpenAPI spec but 404s live.) |
 | `alias set <deployment> <alias>` | | `--yes` | `POST /v2/deployments/{id}/aliases` |
 | `alias rm <alias>` | | `--yes` | |

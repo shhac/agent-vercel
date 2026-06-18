@@ -61,11 +61,11 @@ agent-vercel usage                       # LLM-oriented overview
 | Domain | Commands |
 |---|---|
 | `auth` | `add`, `list` (`ls`), `test`, `set-default`, `remove`, `import-cli` |
-| `scope` | `list` (`ls`), `current`, `set-default`, `members`, `member <id>` |
+| `scope` | `list` (`ls`), `current`, `set-default`, `member list/get` |
 | `deployment` | `list`, `get`, `checks`, `current`, `logs`, `runtime-logs`, `promote`*, `rollback`*, `cancel`*, `redeploy`* |
 | `project` | `list`, `get`, `crons`, `custom-environments` |
 | `env` | `list`, `diff`, `get`, `pull`, `shared list`, `shared get`, `set`*, `rm`* |
-| `domain` | `list`, `get`, `inspect`, `records`, `verify`*, `add`*, `rm`*, `cert`, `certs` |
+| `domain` | `list`, `get`, `inspect`, `records`, `cert list/get`, `verify`*, `add`*, `rm`* |
 | `alias` | `list`, `set`*, `rm`*, `bypass`* |
 | `billing` | `charges` (`--by service\|project`) |
 | `webhook` | `list` (`--project`) |

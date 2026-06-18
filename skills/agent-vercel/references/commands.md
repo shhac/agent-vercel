@@ -34,8 +34,8 @@ There is no command that prints the secret. That is intentional.
 | `scope list` (`ls`) | teams the credential can reach (`GET /v2/teams`) |
 | `scope current` | active scope + default credential |
 | `scope set-default <slug>` | empty arg → personal account |
-| `scope members` | `--limit --cursor --all`; members of the active team scope — uid, username, email, role, confirmed. Needs a team scope (not the personal account) |
-| `scope member <id\|email\|username>` | one member, matched client-side |
+| `scope member list` | `--limit --cursor --all`; members of the active team scope — uid, username, email, role, confirmed. Needs a team scope (not the personal account) |
+| `scope member get <id\|email\|username>` | one member, matched client-side |
 
 ## deployment
 
@@ -93,8 +93,8 @@ distinct from the agent-vercel access token (never readable).
 | `domain verify <domain> --project <p>` * | |
 | `domain add <project> <domain>` * | `--redirect --git-branch` |
 | `domain rm <project> <domain>` * | |
-| `domain cert <id>` | cert expiry / autoRenew / cns |
-| `domain certs` | `--expiring <days>` filters to certs expiring within N days (0 = expired); bulk renewal triage. Spec-plausible, not live-validated — falls back to `domain cert <id>` if the list 404s |
+| `domain cert get <id>` | cert expiry / autoRenew / cns |
+| `domain cert list` | `--expiring <days>` filters to certs expiring within N days (0 = expired); bulk renewal triage. Spec-plausible, not live-validated — falls back to `domain cert get <id>` if the list 404s |
 
 ## alias
 

@@ -36,12 +36,24 @@ func resolveTeamID(cmd *cobra.Command, r *resolved) (string, error) {
 		WithHint("run 'agent-vercel scope list' to see reachable teams")
 }
 
-func scopeMembersCmd(g *GlobalFlags) *cobra.Command {
+// scopeMemberCmd is the `scope member` group: list the team roster and get one
+// member by id/email/username.
+func scopeMemberCmd(g *GlobalFlags) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "member",
+		Short: "Inspect the members of the active team scope (role, email, confirmed state)",
+		RunE:  func(c *cobra.Command, args []string) error { return handleUnknownSubcommand(c, args) },
+	}
+	cmd.AddCommand(scopeMemberListCmd(g), scopeMemberGetCmd(g))
+	return cmd
+}
+
+func scopeMemberListCmd(g *GlobalFlags) *cobra.Command {
 	var limit int
 	var cursor *string
 	var all *bool
 	cmd := &cobra.Command{
-		Use:   "members",
+		Use:   "list",
 		Short: "List the members of the active team scope (role, email, confirmed state)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -67,9 +79,9 @@ func scopeMembersCmd(g *GlobalFlags) *cobra.Command {
 	return cmd
 }
 
-func scopeMemberCmd(g *GlobalFlags) *cobra.Command {
+func scopeMemberGetCmd(g *GlobalFlags) *cobra.Command {
 	return &cobra.Command{
-		Use:   "member <id|email|username>",
+		Use:   "get <id|email|username>",
 		Short: "Show one member of the active team scope (matched by id, email, or username)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -100,7 +112,7 @@ func scopeMemberCmd(g *GlobalFlags) *cobra.Command {
 				}
 			}
 			return agenterrors.Newf(agenterrors.FixableByAgent, "no member matches %q in this team", needle).
-				WithHint("run 'agent-vercel scope members' to list members")
+				WithHint("run 'agent-vercel scope member list' to list members")
 		},
 	}
 }

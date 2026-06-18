@@ -13,7 +13,7 @@ func TestScopeMembers(t *testing.T) {
 
 	// --scope acme is a slug; it is resolved to the team id before hitting the
 	// members endpoint.
-	out, _, err := execCLI(t, srv.URL, "--scope", "acme", "scope", "members")
+	out, _, err := execCLI(t, srv.URL, "--scope", "acme", "scope", "member", "list")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -36,7 +36,7 @@ func TestScopeMembersPersonalAccountErrors(t *testing.T) {
 
 	// No scope = personal account, which has no team members; this must be a
 	// human-fixable error, not a crash or empty list.
-	_, errOut, err := execCLI(t, srv.URL, "scope", "members")
+	_, errOut, err := execCLI(t, srv.URL, "scope", "member", "list")
 	if err == nil {
 		t.Fatalf("expected an error for personal account")
 	}
@@ -50,7 +50,7 @@ func TestScopeMemberByEmail(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New())
 	defer srv.Close()
 
-	out, _, err := execCLI(t, srv.URL, "--scope", "acme", "scope", "member", "dev@acme.com")
+	out, _, err := execCLI(t, srv.URL, "--scope", "acme", "scope", "member", "get", "dev@acme.com")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -65,7 +65,7 @@ func TestScopeMemberByIDAndUsername(t *testing.T) {
 	defer srv.Close()
 
 	// The same match arm accepts uid or username, not just email.
-	byID, _, err := execCLI(t, srv.URL, "--scope", "acme", "scope", "member", "usr_owner")
+	byID, _, err := execCLI(t, srv.URL, "--scope", "acme", "scope", "member", "get", "usr_owner")
 	if err != nil {
 		t.Fatalf("by id err: %v", err)
 	}
@@ -73,7 +73,7 @@ func TestScopeMemberByIDAndUsername(t *testing.T) {
 		t.Fatalf("by id = %s", byID)
 	}
 
-	byUser, _, err := execCLI(t, srv.URL, "--scope", "acme", "scope", "member", "newbie")
+	byUser, _, err := execCLI(t, srv.URL, "--scope", "acme", "scope", "member", "get", "newbie")
 	if err != nil {
 		t.Fatalf("by username err: %v", err)
 	}
@@ -88,7 +88,7 @@ func TestScopeMembersFull(t *testing.T) {
 
 	// --full returns raw member objects (camelCase createdAt) instead of the
 	// compact projection's "joined".
-	out, _, err := execCLI(t, srv.URL, "--scope", "acme", "scope", "members", "--full")
+	out, _, err := execCLI(t, srv.URL, "--scope", "acme", "scope", "member", "list", "--full")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -105,7 +105,7 @@ func TestScopeMemberNotFound(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New())
 	defer srv.Close()
 
-	_, errOut, err := execCLI(t, srv.URL, "--scope", "acme", "scope", "member", "nobody@example.com")
+	_, errOut, err := execCLI(t, srv.URL, "--scope", "acme", "scope", "member", "get", "nobody@example.com")
 	if err == nil {
 		t.Fatalf("expected not-found error")
 	}

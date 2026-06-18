@@ -11,7 +11,7 @@ func TestDomainCerts(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New())
 	defer srv.Close()
 
-	out, _, err := execCLI(t, srv.URL, "domain", "certs")
+	out, _, err := execCLI(t, srv.URL, "domain", "cert", "list")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -34,7 +34,7 @@ func TestDomainCertsFull(t *testing.T) {
 
 	// --full returns raw cert objects (cns / expiresAt) instead of the compact
 	// projection (covers / expires).
-	out, _, err := execCLI(t, srv.URL, "domain", "certs", "--full")
+	out, _, err := execCLI(t, srv.URL, "domain", "cert", "list", "--full")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestDomainCertsExpiring(t *testing.T) {
 
 	// --expiring 30 keeps only the already-expired cert_1; cert_2 (far future)
 	// is dropped.
-	out, _, err := execCLI(t, srv.URL, "domain", "certs", "--expiring", "30")
+	out, _, err := execCLI(t, srv.URL, "domain", "cert", "list", "--expiring", "30")
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}

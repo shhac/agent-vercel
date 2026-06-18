@@ -86,25 +86,26 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 		},
 	}
 
-	cert := &cobra.Command{
-		Use:   "cert <id>",
-		Short: "Get a certificate (expiry, autoRenew, covered names)",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return emitOne(g, func(c *vercel.Client) (json.RawMessage, error) {
-				return c.GetCert(cmd.Context(), args[0])
-			}, compactCert)
-		},
-	}
-
-	cmd.AddCommand(list, get, inspect, domainRecordsCmd(g), cert, domainCertsCmd(g), domainAddCmd(g), domainRmCmd(g), domainVerifyCmd(g))
+	cmd.AddCommand(list, get, inspect, domainRecordsCmd(g), domainCertCmd(g), domainAddCmd(g), domainRmCmd(g), domainVerifyCmd(g))
 	root.AddCommand(cmd)
 }
 
-func domainCertsCmd(g *GlobalFlags) *cobra.Command {
+// domainCertCmd is the `domain cert` group: list the scope's TLS certificates
+// (bulk expiry triage) and get one by id.
+func domainCertCmd(g *GlobalFlags) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "cert",
+		Short: "Inspect TLS certificates (list for bulk expiry triage, or get one)",
+		RunE:  func(c *cobra.Command, args []string) error { return handleUnknownSubcommand(c, args) },
+	}
+	cmd.AddCommand(domainCertListCmd(g), domainCertGetCmd(g))
+	return cmd
+}
+
+func domainCertListCmd(g *GlobalFlags) *cobra.Command {
 	var expiring int
 	cmd := &cobra.Command{
-		Use:   "certs",
+		Use:   "list",
 		Short: "List the scope's TLS certificates and their expiry (bulk renewal triage)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -124,6 +125,19 @@ func domainCertsCmd(g *GlobalFlags) *cobra.Command {
 	}
 	cmd.Flags().IntVar(&expiring, "expiring", 0, "only certs expiring within this many days (0 = already expired/expiring today)")
 	return cmd
+}
+
+func domainCertGetCmd(g *GlobalFlags) *cobra.Command {
+	return &cobra.Command{
+		Use:   "get <id>",
+		Short: "Get a certificate (expiry, autoRenew, covered names)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return emitOne(g, func(c *vercel.Client) (json.RawMessage, error) {
+				return c.GetCert(cmd.Context(), args[0])
+			}, compactCert)
+		},
+	}
 }
 
 // filterExpiringCerts keeps certs whose expiry is at or before now + days
