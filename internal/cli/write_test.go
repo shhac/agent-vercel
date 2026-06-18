@@ -68,6 +68,34 @@ func TestCancelWithYes(t *testing.T) {
 	}
 }
 
+func TestRollbackWithYes(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	out, _, err := execCLI(t, srv.URL, "deployment", "rollback", "dpl_ready", "--yes")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if m := decodeJSON(t, out); m["rolled_back_to"] != "dpl_ready" || m["project"] != "prj_web" {
+		t.Fatalf("rollback = %v", m)
+	}
+}
+
+func TestRedeployWithYes(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	// redeploy resolves the source deployment (dpl_ready), POSTs a new one, and
+	// prints the compacted new deployment returned by the API.
+	out, _, err := execCLI(t, srv.URL, "deployment", "redeploy", "dpl_ready", "--yes")
+	if err != nil {
+		t.Fatalf("err: %v", err)
+	}
+	if m := decodeJSON(t, out); m["id"] != "dpl_new" || m["state"] != "QUEUED" {
+		t.Fatalf("redeploy = %v", m)
+	}
+}
+
 func TestEnvRmResolvesIDWithYes(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New())
 	defer srv.Close()
