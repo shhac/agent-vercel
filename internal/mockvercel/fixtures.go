@@ -214,9 +214,9 @@ func defaults() *Options {
 			{"uid": "alias_2", "alias": "web-ready.vercel.app", "created": "2026-05-01T10:00:00.000Z", "protectionBypass": map[string]any{"scope": "shareable-link"}},
 		},
 		Charges: []map[string]any{
-			{"ServiceName": "Functions", "ChargeCategory": "Usage", "BilledCost": 12.50, "BillingCurrency": "USD", "ConsumedQuantity": 1000000.0, "ConsumedUnit": "invocations", "ChargePeriodStart": "2026-06-01T00:00:00Z", "ChargePeriodEnd": "2026-06-02T00:00:00Z", "Tags": map[string]any{"ProjectName": "web", "ProjectId": "prj_web"}},
-			{"ServiceName": "Bandwidth", "ChargeCategory": "Usage", "BilledCost": 40.00, "BillingCurrency": "USD", "ConsumedQuantity": 200.0, "ConsumedUnit": "GB", "ChargePeriodStart": "2026-06-01T00:00:00Z", "ChargePeriodEnd": "2026-06-02T00:00:00Z", "Tags": map[string]any{"ProjectName": "web", "ProjectId": "prj_web"}},
-			{"ServiceName": "Functions", "ChargeCategory": "Usage", "BilledCost": 3.00, "BillingCurrency": "USD", "ConsumedQuantity": 50000.0, "ConsumedUnit": "invocations", "ChargePeriodStart": "2026-06-01T00:00:00Z", "ChargePeriodEnd": "2026-06-02T00:00:00Z", "Tags": map[string]any{"ProjectName": "api", "ProjectId": "prj_api"}},
+			{"ServiceName": "Functions", "ChargeCategory": "Usage", "BilledCost": 12.50, "BillingCurrency": "USD", "ConsumedQuantity": 1000000.0, "ConsumedUnit": "invocations", "RegionId": "iad1", "ChargePeriodStart": "2026-06-01T00:00:00Z", "ChargePeriodEnd": "2026-06-02T00:00:00Z", "Tags": map[string]any{"ProjectName": "web", "ProjectId": "prj_web"}},
+			{"ServiceName": "Bandwidth", "ChargeCategory": "Usage", "BilledCost": 40.00, "BillingCurrency": "USD", "ConsumedQuantity": 200.0, "ConsumedUnit": "GB", "RegionId": "iad1", "ChargePeriodStart": "2026-06-01T00:00:00Z", "ChargePeriodEnd": "2026-06-02T00:00:00Z", "Tags": map[string]any{"ProjectName": "web", "ProjectId": "prj_web"}},
+			{"ServiceName": "Functions", "ChargeCategory": "Usage", "BilledCost": 3.00, "BillingCurrency": "USD", "ConsumedQuantity": 50000.0, "ConsumedUnit": "invocations", "RegionId": "sfo1", "ChargePeriodStart": "2026-06-01T00:00:00Z", "ChargePeriodEnd": "2026-06-02T00:00:00Z", "Tags": map[string]any{"ProjectName": "api", "ProjectId": "prj_api"}},
 		},
 		Webhooks: []map[string]any{
 			{"id": "hook_deploys", "url": "https://hooks.example.com/vercel", "events": []any{"deployment.created", "deployment.succeeded", "deployment.error"}, "projectIds": []any{"prj_web"}, "createdAt": int64(1716000000000), "updatedAt": int64(1716206800000)},

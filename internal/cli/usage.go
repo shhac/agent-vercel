@@ -37,7 +37,7 @@ CORE DOMAINS (see design-docs/cli-design.md)
   env          list | diff | get | pull | shared list/get | set* | rm*
   domain       list | get | inspect | records | cert list/get | verify* | add* | rm*
   alias        list | set* | rm* | bypass*
-  billing      charges [--by service|project]   (what is driving spend)
+  billing      charges [--by service|project|region] | usage   (what is driving spend / consumed volume)
   webhook      list [--project]                  (which events fire where)
   edge-config  list | items <id>                  (live non-secret key/value config)
   scope        list | current | set-default | member list/get

@@ -19,34 +19,17 @@ func registerBilling(root *cobra.Command, g *GlobalFlags) {
 	var from, to, by string
 	charges := &cobra.Command{
 		Use:   "charges",
-		Short: "List billing/usage charges over a date range, or aggregate by service/project",
+		Short: "List billing/usage charges over a date range, or aggregate cost by service/project/region",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			now := time.Now()
-			fromISO, err := toISO(from, now.AddDate(0, 0, -30))
-			if err != nil {
-				return err
-			}
-			toISOStr, err := toISO(to, now)
-			if err != nil {
-				return err
-			}
-			r, err := resolveClient(g)
-			if err != nil {
-				return err
-			}
-			items, err := r.client.BillingCharges(cmd.Context(), fromISO, toISOStr)
+			items, err := fetchCharges(g, cmd, from, to)
 			if err != nil {
 				return err
 			}
 			if by != "" {
-				charges := make([]charge, 0, len(items))
-				for _, raw := range items {
-					c, err := parseCharge(raw)
-					if err != nil {
-						return err
-					}
-					charges = append(charges, c)
+				charges, err := parseCharges(items)
+				if err != nil {
+					return err
 				}
 				rows, err := aggregateCharges(charges, by)
 				if err != nil {
@@ -60,10 +43,62 @@ func registerBilling(root *cobra.Command, g *GlobalFlags) {
 	f := charges.Flags()
 	f.StringVar(&from, "from", "", "start of range: date (2006-01-02), RFC3339, or duration like 30d (default 30d ago)")
 	f.StringVar(&to, "to", "", "end of range (default now)")
-	f.StringVar(&by, "by", "", "aggregate billed cost by: service | project")
+	f.StringVar(&by, "by", "", "aggregate billed cost by: service | project | region")
 
-	cmd.AddCommand(charges)
+	var ufrom, uto string
+	usage := &cobra.Command{
+		Use:   "usage",
+		Short: "Aggregate consumed quantity by service (volume + unit, not just $) — what resource is the spike",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			items, err := fetchCharges(g, cmd, ufrom, uto)
+			if err != nil {
+				return err
+			}
+			charges, err := parseCharges(items)
+			if err != nil {
+				return err
+			}
+			return emitList(g, aggregateUsage(charges), nil)
+		},
+	}
+	uf := usage.Flags()
+	uf.StringVar(&ufrom, "from", "", "start of range: date (2006-01-02), RFC3339, or duration like 30d (default 30d ago)")
+	uf.StringVar(&uto, "to", "", "end of range (default now)")
+
+	cmd.AddCommand(charges, usage)
 	root.AddCommand(cmd)
+}
+
+// fetchCharges resolves the date range (defaults: 30d ago → now) and the client,
+// then pulls the FOCUS billing charges — shared by `charges` and `usage`.
+func fetchCharges(g *GlobalFlags, cmd *cobra.Command, from, to string) ([]json.RawMessage, error) {
+	now := time.Now()
+	fromISO, err := toISO(from, now.AddDate(0, 0, -30))
+	if err != nil {
+		return nil, err
+	}
+	toISOStr, err := toISO(to, now)
+	if err != nil {
+		return nil, err
+	}
+	r, err := resolveClient(g)
+	if err != nil {
+		return nil, err
+	}
+	return r.client.BillingCharges(cmd.Context(), fromISO, toISOStr)
+}
+
+func parseCharges(items []json.RawMessage) ([]charge, error) {
+	charges := make([]charge, 0, len(items))
+	for _, raw := range items {
+		c, err := parseCharge(raw)
+		if err != nil {
+			return nil, err
+		}
+		charges = append(charges, c)
+	}
+	return charges, nil
 }
 
 // charge is the compact view of a FOCUS billing charge.
@@ -71,6 +106,7 @@ type charge struct {
 	Service     string
 	Category    string
 	Project     string
+	Region      string
 	Consumed    float64
 	Unit        string
 	BilledCost  float64
@@ -87,6 +123,8 @@ func parseCharge(raw json.RawMessage) (charge, error) {
 		ConsumedQuantity  float64        `json:"ConsumedQuantity"`
 		ConsumedUnit      string         `json:"ConsumedUnit"`
 		ServiceName       string         `json:"ServiceName"`
+		RegionID          string         `json:"RegionId"`
+		RegionName        string         `json:"RegionName"`
 		ChargePeriodStart string         `json:"ChargePeriodStart"`
 		ChargePeriodEnd   string         `json:"ChargePeriodEnd"`
 		Tags              map[string]any `json:"Tags"`
@@ -100,6 +138,7 @@ func parseCharge(raw json.RawMessage) (charge, error) {
 	}
 	return charge{
 		Service: c.ServiceName, Category: c.ChargeCategory, Project: project,
+		Region:   firstNonEmpty(c.RegionName, c.RegionID),
 		Consumed: c.ConsumedQuantity, Unit: c.ConsumedUnit,
 		BilledCost: c.BilledCost, Currency: c.BillingCurrency,
 		PeriodStart: c.ChargePeriodStart, PeriodEnd: c.ChargePeriodEnd,
@@ -144,8 +183,15 @@ func aggregateCharges(charges []charge, by string) ([]any, error) {
 			}
 			return c.Project
 		}
+	case "region":
+		key = func(c charge) string {
+			if c.Region == "" {
+				return "(global)"
+			}
+			return c.Region
+		}
 	default:
-		return nil, agenterrors.Newf(agenterrors.FixableByAgent, "unknown --by %q; use service or project", by)
+		return nil, agenterrors.Newf(agenterrors.FixableByAgent, "unknown --by %q; use service, project, or region", by)
 	}
 	type agg struct {
 		cost     float64
@@ -174,6 +220,42 @@ func aggregateCharges(charges []charge, by string) ([]any, error) {
 		rows = append(rows, row)
 	}
 	return rows, nil
+}
+
+// aggregateUsage groups charges by service, summing consumed quantity (the unit
+// is consistent within a service) alongside billed cost — the "what resource,
+// in what volume, is driving the spike" view. Sorted by cost descending.
+func aggregateUsage(charges []charge) []any {
+	type agg struct {
+		consumed float64
+		cost     float64
+		count    int
+		unit     string
+		currency string
+	}
+	groups := map[string]*agg{}
+	var order []string
+	for _, c := range charges {
+		a, ok := groups[c.Service]
+		if !ok {
+			a = &agg{unit: c.Unit, currency: c.Currency}
+			groups[c.Service] = a
+			order = append(order, c.Service)
+		}
+		a.consumed += c.Consumed
+		a.cost += c.BilledCost
+		a.count++
+	}
+	sort.Slice(order, func(i, j int) bool { return groups[order[i]].cost > groups[order[j]].cost })
+	rows := make([]any, 0, len(order))
+	for _, k := range order {
+		a := groups[k]
+		row := map[string]any{"service": k, "consumed": a.consumed, "cost": a.cost, "charges": a.count}
+		putIf(row, "unit", a.unit)
+		putIf(row, "currency", a.currency)
+		rows = append(rows, row)
+	}
+	return rows
 }
 
 // toISO converts a date (2006-01-02), RFC3339, or relative duration (30d) into an

@@ -56,6 +56,40 @@ func TestBillingChargesByProject(t *testing.T) {
 	}
 }
 
+func TestBillingChargesByRegion(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	out, _, err := execCLI(t, srv.URL, "billing", "charges", "--by", "region")
+	if err != nil {
+		t.Fatalf("by region: %v", err)
+	}
+	rows := ndjsonLines(t, out)
+	// iad1: 12.50+40.00=52.50 outranks sfo1: 3.00.
+	if rows[0]["region"] != "iad1" || rows[0]["cost"] != 52.5 {
+		t.Fatalf("top region = %v; want iad1 52.5", rows[0])
+	}
+}
+
+func TestBillingUsageByService(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	out, _, err := execCLI(t, srv.URL, "billing", "usage")
+	if err != nil {
+		t.Fatalf("usage: %v", err)
+	}
+	rows := ndjsonLines(t, out)
+	// Sorted by cost desc: Bandwidth (40) then Functions (15.5).
+	if rows[0]["service"] != "Bandwidth" || rows[0]["consumed"] != 200.0 || rows[0]["unit"] != "GB" {
+		t.Fatalf("top usage = %v; want Bandwidth 200 GB", rows[0])
+	}
+	// Functions consumed quantity sums across both charges: 1,000,000 + 50,000.
+	if rows[1]["service"] != "Functions" || rows[1]["consumed"] != 1050000.0 || rows[1]["unit"] != "invocations" {
+		t.Fatalf("functions usage = %v; want 1,050,000 invocations", rows[1])
+	}
+}
+
 func TestBillingChargesBadBy(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New())
 	defer srv.Close()
