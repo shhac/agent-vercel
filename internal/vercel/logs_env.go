@@ -36,6 +36,17 @@ func (c *Client) ProjectEnv(ctx context.Context, idOrName string, q url.Values) 
 	return decodeKeyedArray(raw, "envs"), nil
 }
 
+// SharedEnv — GET /v1/env. The team-level shared environment variables, reused
+// across projects (distinct from per-project ProjectEnv). Team-scoped via the
+// scope query param. Items live under "envs"; a bare array is tolerated.
+func (c *Client) SharedEnv(ctx context.Context, q url.Values) ([]json.RawMessage, error) {
+	raw, err := c.Get(ctx, "/v1/env", q)
+	if err != nil {
+		return nil, err
+	}
+	return decodeKeyedArray(raw, "envs"), nil
+}
+
 // decodeArrayOrStream parses either a JSON array or an NDJSON stream of objects.
 func decodeArrayOrStream(raw json.RawMessage) []json.RawMessage {
 	t := bytes.TrimSpace(raw)

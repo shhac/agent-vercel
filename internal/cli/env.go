@@ -17,7 +17,7 @@ func registerEnv(root *cobra.Command, g *GlobalFlags) {
 		Short: "Inspect a project's environment variables (and diff across environments)",
 		RunE:  func(c *cobra.Command, args []string) error { return handleUnknownSubcommand(c, args) },
 	}
-	cmd.AddCommand(envListCmd(g), envGetCmd(g), envDiffCmd(g), envSetCmd(g), envRmCmd(g), envPullCmd(g))
+	cmd.AddCommand(envListCmd(g), envGetCmd(g), envDiffCmd(g), envSharedCmd(g), envSetCmd(g), envRmCmd(g), envPullCmd(g))
 	root.AddCommand(cmd)
 }
 

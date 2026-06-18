@@ -98,6 +98,8 @@ domain is a possible later addition.
 | `env set <project> <key> <value>` | `--environment`, `--git-branch` | `--yes` | |
 | `env rm <project> <key>` | `--environment` | `--yes` | |
 | `env pull <project>` | `--environment` (default development), `--out` (default .env), `--git-branch` | | writes decrypted vars to a 0600 dotenv file |
+| `env shared list` | `--decrypt` | | NDJSON; the team's shared env vars (defined once, linked into many projects) — key, type, target[], linked projects; values withheld unless `--decrypt`. `GET /v1/env` (team-scoped). Distinct from the per-project `env list`. Spec-validated, not live-validated |
+| `env shared get <key\|id>` | `--decrypt` | | one shared var matched by key or id |
 | `domain list` | `--limit` | | account domains; `GET /v5/domains` |
 | `domain get <domain>` | | | verification challenges, redirect, verified state |
 | `domain inspect <domain>` | | | config check: intended vs actual nameservers, misconfig reasons |

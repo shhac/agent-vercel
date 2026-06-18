@@ -64,7 +64,7 @@ agent-vercel usage                       # LLM-oriented overview
 | `scope` | `list` (`ls`), `current`, `set-default`, `members`, `member <id>` |
 | `deployment` | `list`, `get`, `checks`, `current`, `logs`, `runtime-logs`, `promote`*, `rollback`*, `cancel`*, `redeploy`* |
 | `project` | `list`, `get`, `crons`, `custom-environments` |
-| `env` | `list`, `diff`, `get`, `set`*, `rm`*, `pull` |
+| `env` | `list`, `diff`, `get`, `pull`, `shared list`, `shared get`, `set`*, `rm`* |
 | `domain` | `list`, `get`, `inspect`, `records`, `verify`*, `add`*, `rm`*, `cert`, `certs` |
 | `alias` | `list`, `set`*, `rm`*, `bypass`* |
 | `billing` | `charges` (`--by service\|project`) |

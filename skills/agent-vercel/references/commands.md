@@ -74,6 +74,8 @@ There is no command that prints the secret. That is intentional.
 | `env set <project> <key> <value>` * | `--environment --git-branch` |
 | `env rm <project> <key>` * | `--environment` |
 | `env pull <project>` | `--environment` (default development), `--out` (default .env), `--git-branch` — write decrypted vars to a dotenv file |
+| `env shared list` | `--decrypt`; the team's shared env vars (defined once, linked into many projects) — key, type, target, linked projects. Distinct from per-project `env list` |
+| `env shared get <key\|id>` | `--decrypt`; one shared var by key or id |
 
 Env vars are the *application's* config (legitimately readable with `--decrypt`),
 distinct from the agent-vercel access token (never readable).

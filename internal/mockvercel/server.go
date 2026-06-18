@@ -41,6 +41,7 @@ type Options struct {
 	BuildEvents        []map[string]any
 	RuntimeLogs        []map[string]any
 	Env                []map[string]any
+	SharedEnv          []map[string]any
 	Domains            []map[string]any
 	DomainConfig       map[string]any
 	DomainRecords      []map[string]any
@@ -86,6 +87,9 @@ func WithEdgeConfigs(e []map[string]any) Option { return func(o *Options) { o.Ed
 
 // WithTeamMembers overrides the fixture team members.
 func WithTeamMembers(m []map[string]any) Option { return func(o *Options) { o.TeamMembers = m } }
+
+// WithSharedEnv overrides the fixture team-level shared env vars.
+func WithSharedEnv(e []map[string]any) Option { return func(o *Options) { o.SharedEnv = e } }
 
 // WithRuntimeLogsHang makes the runtime-logs endpoint hold the connection open
 // after emitting its lines, simulating Vercel's open-ended log stream.
@@ -195,6 +199,10 @@ func defaults() *Options {
 			{"id": "env_apiprev", "key": "API_URL", "target": []any{"preview"}, "type": "plain", "value": "https://preview.example.com"},
 			{"id": "env_onlyprod", "key": "ONLY_PROD", "target": []any{"production"}, "type": "encrypted", "value": "p"},
 			{"id": "env_onlyprev", "key": "ONLY_PREVIEW", "target": []any{"preview"}, "type": "encrypted", "value": "v"},
+		},
+		SharedEnv: []map[string]any{
+			{"id": "env_shared_db", "key": "DATABASE_URL", "type": "encrypted", "target": []any{"production", "preview"}, "projectId": []any{"prj_web", "prj_api"}, "value": "postgres://shared", "createdAt": int64(1716000000000), "updatedAt": int64(1716206800000)},
+			{"id": "env_shared_flag", "key": "FEATURE_X", "type": "plain", "target": []any{"production"}, "projectId": []any{"prj_web"}, "value": "on", "createdAt": int64(1716010000000), "updatedAt": int64(1716010000000)},
 		},
 		Domains: []map[string]any{
 			{
@@ -345,6 +353,9 @@ func New(opts ...Option) http.Handler {
 		if o.RuntimeLogsHang {
 			<-r.Context().Done() // never close on our own; the client's window must
 		}
+	}))
+	mux.HandleFunc("GET /v1/env", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{"envs": o.SharedEnv})
 	}))
 	mux.HandleFunc("GET /v10/projects/{idOrName}/env", requireBearer(func(w http.ResponseWriter, r *http.Request) {
 		decrypt := r.URL.Query().Get("decrypt") == "true"

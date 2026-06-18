@@ -34,7 +34,7 @@ SETUP (once)
 CORE DOMAINS (see design-docs/cli-design.md)
   deployment   list | get | checks | logs | runtime-logs | current | promote* | rollback* | cancel* | redeploy*
   project      list | get | crons | custom-environments
-  env          list | diff | get | pull | set* | rm*
+  env          list | diff | get | pull | shared list/get | set* | rm*
   domain       list | get | inspect | records | cert <id> | certs | verify* | add* | rm*
   alias        list | set* | rm* | bypass*
   billing      charges [--by service|project]   (what is driving spend)
