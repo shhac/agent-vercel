@@ -128,6 +128,7 @@ func newRootCmd(version string) *cobra.Command {
 	registerEnv(root, g)
 	registerDomain(root, g)
 	registerAlias(root, g)
+	registerFirewall(root, g)
 	registerBilling(root, g)
 	registerWebhook(root, g)
 	registerEdgeConfig(root, g)

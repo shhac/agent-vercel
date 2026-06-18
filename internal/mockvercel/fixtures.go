@@ -38,6 +38,9 @@ type Options struct {
 	Webhooks           []map[string]any
 	EdgeConfigs        []map[string]any
 	EdgeConfigItems    map[string][]map[string]any
+	FirewallConfig     map[string]any
+	AttackStatus       map[string]any
+	FirewallBypass     map[string]any
 	// RuntimeLogsHang, when set, makes the runtime-logs handler hold the
 	// connection open after emitting its lines — simulating Vercel's
 	// open-ended stream so the client's bounded-window read can be tested.
@@ -230,6 +233,31 @@ func defaults() *Options {
 			"ecfg_flags": {
 				{"key": "maintenance_mode", "value": false},
 				{"key": "new_checkout", "value": map[string]any{"enabled": true, "rollout": 25}},
+			},
+		},
+		FirewallConfig: map[string]any{
+			"firewallEnabled": true,
+			"version":         7,
+			"rules": []any{
+				map[string]any{"id": "rule_bots", "name": "block-bad-bots", "active": true, "action": map[string]any{"mitigate": map[string]any{"action": "deny"}}},
+				map[string]any{"id": "rule_old", "name": "legacy-rule", "active": false},
+			},
+			"ips": []any{
+				map[string]any{"id": "ip_1", "hostname": "web.example.com", "ip": "203.0.113.7", "action": "deny"},
+			},
+			"managedRules": map[string]any{
+				"owasp":          map[string]any{"active": true},
+				"bot_protection": map[string]any{"active": false},
+			},
+		},
+		AttackStatus: map[string]any{
+			"anomalies": []any{
+				map[string]any{"projectId": "prj_web", "atMinute": int64(1716206400000), "affectedHostMap": map[string]any{"web.example.com": map[string]any{"observedMax": 12000}}},
+			},
+		},
+		FirewallBypass: map[string]any{
+			"result": []any{
+				map[string]any{"domain": "web.example.com", "sourceIp": "198.51.100.9", "allSources": false},
 			},
 		},
 	}

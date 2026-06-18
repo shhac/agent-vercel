@@ -167,6 +167,15 @@ func New(opts ...Option) http.Handler {
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"certs": certs})
 	}))
+	mux.HandleFunc("GET /v1/security/firewall/config/active", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, o.FirewallConfig)
+	}))
+	mux.HandleFunc("GET /v1/security/firewall/attack-status", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, o.AttackStatus)
+	}))
+	mux.HandleFunc("GET /v1/security/firewall/bypass", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, o.FirewallBypass)
+	}))
 	mux.HandleFunc("GET /v8/certs/{id}", requireBearer(func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		if c, ok := o.Certs[id]; ok {
