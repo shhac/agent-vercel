@@ -78,6 +78,15 @@ func (c *Client) DeleteDNSRecord(ctx context.Context, domain, recordID string) (
 	return c.Do(ctx, http.MethodDelete, "/v2/domains/"+url.PathEscape(domain)+"/records/"+url.PathEscape(recordID), nil, nil)
 }
 
+// PurgeCacheByTags — POST /v1/edge-cache/invalidate-by-tags. Marks the CDN,
+// runtime, and data-cache entries tagged with any of tags as stale (background
+// revalidate). projectIDOrName scopes the purge; at most 16 tags per call.
+func (c *Client) PurgeCacheByTags(ctx context.Context, projectIDOrName string, tags []string) (json.RawMessage, error) {
+	q := url.Values{}
+	q.Set("projectIdOrName", projectIDOrName)
+	return c.Do(ctx, http.MethodPost, "/v1/edge-cache/invalidate-by-tags", q, map[string]any{"tags": tags})
+}
+
 // SetAliasProtectionBypass — PATCH /aliases/{id}/protection-bypass. Creates a
 // shareable bypass link for a deployment-protected alias (optionally with a TTL)
 // or revokes an existing one. The returned bypass secret is the share link the

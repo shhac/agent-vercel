@@ -176,6 +176,9 @@ func New(opts ...Option) http.Handler {
 	mux.HandleFunc("GET /v1/security/firewall/bypass", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
 		writeJSON(w, http.StatusOK, o.FirewallBypass)
 	}))
+	mux.HandleFunc("POST /v1/edge-cache/invalidate-by-tags", requireBearer(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK) // Vercel returns 200 with no body
+	}))
 	mux.HandleFunc("GET /v8/certs/{id}", requireBearer(func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		if c, ok := o.Certs[id]; ok {

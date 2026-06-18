@@ -26,6 +26,7 @@ func TestWritesAreGatedWithoutYes(t *testing.T) {
 		{"domain", "verify", "example.com", "--project", "web"},
 		{"alias", "set", "dpl_ready", "app.example.com"},
 		{"alias", "rm", "alias_1"},
+		{"cache", "purge", "prj_web", "--tag", "products"},
 	}
 	for _, args := range cases {
 		_, errOut, err := execCLI(t, srv.URL, args...)
