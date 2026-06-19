@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/shhac/lib-agent-cli/creds"
+	"github.com/shhac/lib-agent-cli/xdg"
 )
 
 // configDirName follows the agent-* family convention: the plain tool name
@@ -20,7 +20,7 @@ func defaultPath() (string, error) {
 	if env := os.Getenv("AGENT_VERCEL_CREDENTIALS"); env != "" {
 		return env, nil
 	}
-	return filepath.Join(creds.ConfigDir(configDirName), "credentials.json"), nil
+	return filepath.Join(xdg.ConfigDir(configDirName), "credentials.json"), nil
 }
 
 // Path returns the credentials file path (for reporting, not secrets).

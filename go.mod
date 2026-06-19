@@ -3,7 +3,8 @@ module github.com/shhac/agent-vercel
 go 1.26.4
 
 require (
-	github.com/ncruces/zenity v0.10.14
+	github.com/shhac/lib-agent-cli v0.0.0-20260619171958-0ba0c0289c23
+	github.com/shhac/lib-agent-output v0.4.1
 	github.com/spf13/cobra v1.10.2
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -13,9 +14,8 @@ require (
 	github.com/dchest/jsmin v0.0.0-20220218165748-59f39799265f // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/josephspurrier/goversioninfo v1.4.1 // indirect
+	github.com/ncruces/zenity v0.10.14 // indirect
 	github.com/randall77/makefat v0.0.0-20210315173500-7ddd0e42c844 // indirect
-	github.com/shhac/lib-agent-cli v0.0.0-20260619142021-2199e91f3731 // indirect
-	github.com/shhac/lib-agent-output v0.4.0 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 	golang.org/x/image v0.20.0 // indirect
 	golang.org/x/sys v0.25.0 // indirect

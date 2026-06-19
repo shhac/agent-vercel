@@ -8,6 +8,7 @@ import (
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
 	"github.com/shhac/agent-vercel/internal/output"
 	"github.com/shhac/lib-agent-cli/creds"
+	"github.com/shhac/lib-agent-cli/xdg"
 	"github.com/spf13/cobra"
 )
 
@@ -21,12 +22,13 @@ var configKeys = map[string]string{
 
 // configStore persists the flat string→string config map (non-secret defaults).
 // $AGENT_VERCEL_CONFIG overrides the file path; otherwise it lives beside the
-// credentials under the XDG config dir. Storage (0600, XDG dir) is provided by
-// lib-agent-cli/creds; the key set and validation stay here.
+// credentials under the XDG config dir. The dir comes from lib-agent-cli/xdg
+// and the 0600 storage from lib-agent-cli/creds; the key set and validation
+// stay here.
 func configStore() creds.Store {
 	path := os.Getenv("AGENT_VERCEL_CONFIG")
 	if path == "" {
-		path = filepath.Join(creds.ConfigDir("agent-vercel"), "config.json")
+		path = filepath.Join(xdg.ConfigDir("agent-vercel"), "config.json")
 	}
 	return creds.Store{Path: path}
 }
