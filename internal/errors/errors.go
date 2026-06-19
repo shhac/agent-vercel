@@ -1,48 +1,43 @@
+// Package errors re-exports the shared error contract from lib-agent-output, so
+// the rest of agent-vercel keeps using the internal/errors import path while the
+// implementation lives in one place. (Migration shim — call sites can later be
+// pointed at lib-agent-output directly and this package deleted.)
 package errors
 
 import (
-	"errors"
-	"fmt"
+	stderrors "errors"
+
+	out "github.com/shhac/lib-agent-output"
 )
 
-type FixableBy string
+type (
+	FixableBy = out.FixableBy
+	// APIError is the family name for the shared output.Error type.
+	APIError = out.Error
+)
 
 const (
-	FixableByAgent FixableBy = "agent"
-	FixableByHuman FixableBy = "human"
-	FixableByRetry FixableBy = "retry"
+	FixableByAgent = out.FixableByAgent
+	FixableByHuman = out.FixableByHuman
+	FixableByRetry = out.FixableByRetry
 )
 
-type APIError struct {
-	Message   string    `json:"error"`
-	Hint      string    `json:"hint,omitempty"`
-	FixableBy FixableBy `json:"fixable_by"`
-	Cause     error     `json:"-"`
-}
+var (
+	New  = out.New
+	Newf = out.Newf
+)
 
-func (e *APIError) Error() string { return e.Message }
-func (e *APIError) Unwrap() error { return e.Cause }
-
-func New(message string, fixableBy FixableBy) *APIError {
-	return &APIError{Message: message, FixableBy: fixableBy}
-}
-
-func Newf(fixableBy FixableBy, format string, args ...any) *APIError {
-	return &APIError{Message: fmt.Sprintf(format, args...), FixableBy: fixableBy}
-}
-
+// Wrap preserves agent-vercel's nil-safety: a nil error wraps to a nil
+// *APIError. (lib-agent-output's Wrap dereferences err unconditionally, so this
+// guard is kept here — see migration notes.)
 func Wrap(err error, fixableBy FixableBy) *APIError {
 	if err == nil {
 		return nil
 	}
-	return &APIError{Message: err.Error(), FixableBy: fixableBy, Cause: err}
+	return out.Wrap(err, fixableBy)
 }
 
-func (e *APIError) WithHint(hint string) *APIError {
-	e.Hint = hint
-	return e
-}
-
+// As keeps the loose target signature the rest of the package expects.
 func As(err error, target any) bool {
-	return errors.As(err, target)
+	return stderrors.As(err, target)
 }

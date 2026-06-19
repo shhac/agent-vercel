@@ -1,11 +1,13 @@
 package cli
 
 import (
+	"os"
+	"path/filepath"
 	"strconv"
 
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
 	"github.com/shhac/agent-vercel/internal/output"
-	"github.com/shhac/agent-vercel/internal/settings"
+	"github.com/shhac/lib-agent-cli/creds"
 	"github.com/spf13/cobra"
 )
 
@@ -16,6 +18,26 @@ var configKeys = map[string]string{
 	"max-body-chars": "default body/log truncation (0 = per-command default, -1 = unlimited)",
 	"timeout":        "default request timeout in milliseconds",
 }
+
+// configStore persists the flat string→string config map (non-secret defaults).
+// $AGENT_VERCEL_CONFIG overrides the file path; otherwise it lives beside the
+// credentials under the XDG config dir. Storage (0600, XDG dir) is provided by
+// lib-agent-cli/creds; the key set and validation stay here.
+func configStore() creds.Store {
+	path := os.Getenv("AGENT_VERCEL_CONFIG")
+	if path == "" {
+		path = filepath.Join(creds.ConfigDir("agent-vercel"), "config.json")
+	}
+	return creds.Store{Path: path}
+}
+
+func loadConfig() map[string]string {
+	m := map[string]string{}
+	_ = configStore().Load(&m)
+	return m
+}
+
+func saveConfig(m map[string]string) error { return configStore().Save(m) }
 
 // validateConfig checks a key is a known config setting with a valid value,
 // returning a fixable_by:agent error otherwise.
@@ -53,14 +75,7 @@ func registerConfig(root *cobra.Command, g *GlobalFlags) {
 		Short: "Read one setting",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			s, err := settings.New()
-			if err != nil {
-				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-			}
-			v, ok, err := s.Get(args[0])
-			if err != nil {
-				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-			}
+			v, ok := loadConfig()[args[0]]
 			if !ok {
 				return agenterrors.Newf(agenterrors.FixableByAgent, "no setting %q", args[0]).
 					WithHint("run 'agent-vercel config list' to see settings")
@@ -77,11 +92,9 @@ func registerConfig(root *cobra.Command, g *GlobalFlags) {
 			if err := validateConfig(args[0], args[1]); err != nil {
 				return err
 			}
-			s, err := settings.New()
-			if err != nil {
-				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-			}
-			if err := s.Set(args[0], args[1]); err != nil {
+			m := loadConfig()
+			m[args[0]] = args[1]
+			if err := saveConfig(m); err != nil {
 				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
 			}
 			return printSingle(g, map[string]any{"key": args[0], "value": args[1]})
@@ -93,14 +106,7 @@ func registerConfig(root *cobra.Command, g *GlobalFlags) {
 		Short: "List all settings",
 		Args:  cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			s, err := settings.New()
-			if err != nil {
-				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-			}
-			m, err := s.Load()
-			if err != nil {
-				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-			}
+			m := loadConfig()
 			out := make(map[string]any, len(m))
 			for k, v := range m {
 				out[k] = v
@@ -114,11 +120,9 @@ func registerConfig(root *cobra.Command, g *GlobalFlags) {
 		Short: "Remove one setting",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			s, err := settings.New()
-			if err != nil {
-				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
-			}
-			if err := s.Unset(args[0]); err != nil {
+			m := loadConfig()
+			delete(m, args[0])
+			if err := saveConfig(m); err != nil {
 				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
 			}
 			return printSingle(g, map[string]any{"unset": args[0]})

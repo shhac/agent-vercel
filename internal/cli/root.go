@@ -8,19 +8,19 @@ import (
 
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
 	"github.com/shhac/agent-vercel/internal/output"
-	"github.com/shhac/agent-vercel/internal/settings"
+	libcli "github.com/shhac/lib-agent-cli/cli"
 	"github.com/spf13/cobra"
 )
 
 // GlobalFlags carries the persistent flags shared by every command. A
 // credential (--auth, the secret) and a scope (--scope, which team) are
-// separate axes: one credential reaches many teams.
+// separate axes: one credential reaches many teams. The shared
+// --format/--timeout/--debug live in the embedded libcli.Globals.
 type GlobalFlags struct {
+	libcli.Globals // Format, TimeoutMS, Debug
+
 	Scope        string // team slug or id; "" resolves to the default/personal account
 	Auth         string // credential label selecting which stored credential to use
-	Format       string // json | yaml | jsonl ("" = per-command default)
-	TimeoutMS    int
-	Debug        bool
 	Full         bool
 	BaseURL      string // hidden; overrides https://api.vercel.com for tests
 	MaxBodyChars int
@@ -44,14 +44,7 @@ func Execute(version string) error {
 // missing or unreadable config never blocks a command. Credential/scope defaults
 // are NOT here — those live in credentials.json via auth/scope set-default.
 func applyConfigDefaults(g *GlobalFlags) {
-	s, err := settings.New()
-	if err != nil {
-		return
-	}
-	m, err := s.Load()
-	if err != nil {
-		return
-	}
+	m := loadConfig()
 	if g.Format == "" {
 		g.Format = m["format"]
 	}
@@ -85,33 +78,19 @@ func annotateError(err error) error {
 func newRootCmd(version string) *cobra.Command {
 	g := &GlobalFlags{}
 
-	root := &cobra.Command{
-		Use:           "agent-vercel",
-		Short:         "Vercel CLI for AI agents — token-efficient, structured output",
-		Version:       version,
-		SilenceUsage:  true,
-		SilenceErrors: true,
-		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
-			applyConfigDefaults(g)
-			// Validate --format up front so a bad value fails before any work.
-			if g.Format != "" {
-				if _, err := output.ParseFormat(g.Format); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return cmd.Help()
-		},
-	}
+	root := libcli.NewRoot(libcli.Options{
+		Use:            "agent-vercel",
+		Short:          "Vercel CLI for AI agents — token-efficient, structured output",
+		Version:        version,
+		Globals:        &g.Globals,
+		DefaultFormat:  output.FormatNDJSON,
+		ConfigDefaults: func() { applyConfigDefaults(g) },
+		UnknownHint:    "run 'agent-vercel usage' to see the available domains",
+	})
 
 	pf := root.PersistentFlags()
 	pf.StringVarP(&g.Scope, "scope", "s", "", "team slug or id to act on (default: personal account / stored default)")
 	pf.StringVar(&g.Auth, "auth", "", "credential label selecting which stored credential to use")
-	pf.StringVarP(&g.Format, "format", "f", "", "output format: json|yaml|jsonl")
-	pf.IntVarP(&g.TimeoutMS, "timeout", "t", 0, "request timeout in milliseconds (0 = client default)")
-	pf.BoolVarP(&g.Debug, "debug", "d", false, "log redacted HTTP records to stderr")
 	pf.BoolVar(&g.Full, "full", false, "return raw Vercel API payloads instead of compact projections")
 	pf.IntVar(&g.MaxBodyChars, "max-body-chars", 0, "truncate long body/log fields (0 = per-command default, -1 = unlimited)")
 	pf.StringVar(&g.BaseURL, "base-url", "", "override the API base URL (testing)")
