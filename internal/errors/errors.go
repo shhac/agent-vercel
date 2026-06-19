@@ -25,17 +25,11 @@ const (
 var (
 	New  = out.New
 	Newf = out.Newf
+	// Wrap delegates to lib-agent-output, which nil-guards err as of v0.4.3
+	// (a nil err wraps to a nil *Error) — the nil-safety this package used to
+	// keep locally.
+	Wrap = out.Wrap
 )
-
-// Wrap preserves agent-vercel's nil-safety: a nil error wraps to a nil
-// *APIError. (lib-agent-output's Wrap dereferences err unconditionally, so this
-// guard is kept here — see migration notes.)
-func Wrap(err error, fixableBy FixableBy) *APIError {
-	if err == nil {
-		return nil
-	}
-	return out.Wrap(err, fixableBy)
-}
 
 // As keeps the loose target signature the rest of the package expects.
 func As(err error, target any) bool {

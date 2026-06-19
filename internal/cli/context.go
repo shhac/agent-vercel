@@ -7,6 +7,7 @@ import (
 	"github.com/shhac/agent-vercel/internal/credential"
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
 	"github.com/shhac/agent-vercel/internal/vercel"
+	"github.com/shhac/lib-agent-cli/creds"
 )
 
 // newCredStore constructs the credential store. It is a package var so tests
@@ -129,11 +130,7 @@ func missingSecretErr(label string) error {
 		WithHint("re-add it: set VERCEL_TOKEN then run 'agent-vercel auth add " + label + "'")
 }
 
-func firstNonEmpty(vals ...string) string {
-	for _, v := range vals {
-		if v != "" {
-			return v
-		}
-	}
-	return ""
-}
+// firstNonEmpty delegates to lib-agent-cli/creds — the family's canonical
+// "flag, then env, then default" resolver — kept under the short local name
+// the compact projections read more cleanly with.
+var firstNonEmpty = creds.FirstNonEmpty
