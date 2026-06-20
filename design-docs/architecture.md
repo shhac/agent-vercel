@@ -7,10 +7,10 @@ Keychain.
 
 ```
 agent-vercel/
-├── cmd/agent-vercel/main.go      # entry point; injects build version → cli.Execute
+├── cmd/agent-vercel/main.go      # entry point; injects build version → libcli.Run(cli.NewRootCmd)
 ├── internal/
 │   ├── cli/                      # cobra command tree (the only I/O layer)
-│   │   ├── root.go               # GlobalFlags, Execute, error rendering, helpers
+│   │   ├── root.go               # GlobalFlags, NewRootCmd, helpers
 │   │   ├── usage.go              # `usage` overview
 │   │   ├── auth.go               # `auth` group   (credential / secret axis)
 │   │   ├── scope.go              # `scope` group  (scope axis)
@@ -39,11 +39,14 @@ agent-vercel/
 
 ## Command layer (`internal/cli`)
 
-- `Execute(version)` builds the root command, runs it, and **renders any error
-  exactly once** as structured JSON on stderr (cobra's own error/usage printing
-  is silenced). This single funnel covers RunE bodies, `PersistentPreRunE`
-  checks, flag-parse errors, and unknown-subcommand handlers — so no error path
-  can leak unstructured text or be swallowed.
+- `NewRootCmd(version)` builds the root command (via `libcli.NewRoot`); `main`
+  hands it to `libcli.Run`, which runs it and **renders any error exactly once**
+  as structured JSON on stderr before setting the exit code (cobra's own
+  error/usage printing is silenced by `NewRoot`). This single sink covers RunE
+  bodies, `PersistentPreRunE` checks, flag-parse errors, and the
+  unknown-command handler — so no error path can leak unstructured text or be
+  swallowed. `output.WriteError` wraps any not-yet-structured error as
+  `fixable_by: agent`, which is why no custom error-annotation pass is needed.
 - `GlobalFlags` carries the persistent flags. The two that matter:
   `--auth <label>` (which credential) and `--scope <team>` (which team) — the
   two axes, kept independent.

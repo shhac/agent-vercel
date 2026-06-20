@@ -26,19 +26,6 @@ type GlobalFlags struct {
 	MaxBodyChars int
 }
 
-// Execute builds the root command and runs it. Any error — from a RunE body, a
-// PersistentPreRunE check, flag parsing, or an unknown-subcommand handler — is
-// rendered here as the family's structured JSON on stderr, exactly once, then
-// signalled as a non-zero exit. (cobra's own printing is silenced.)
-func Execute(version string) error {
-	root := newRootCmd(version)
-	if err := root.Execute(); err != nil {
-		writeErr(annotateError(err))
-		return err
-	}
-	return nil
-}
-
 // applyConfigDefaults fills unset presentation/transport flags from config.json
 // (precedence: explicit flag > config > built-in default). Best-effort: a
 // missing or unreadable config never blocks a command. Credential/scope defaults
@@ -60,22 +47,12 @@ func applyConfigDefaults(g *GlobalFlags) {
 	}
 }
 
-// annotateError adds a usage hint to cobra's bare "unknown command" error (an
-// unknown top-level command isn't caught by handleUnknownSubcommand, which only
-// covers unknown subcommands of a known group).
-func annotateError(err error) error {
-	var aerr *agenterrors.APIError
-	if agenterrors.As(err, &aerr) {
-		return err
-	}
-	if strings.Contains(err.Error(), "unknown command") {
-		return agenterrors.New(err.Error(), agenterrors.FixableByAgent).
-			WithHint("run 'agent-vercel usage' to see the available domains")
-	}
-	return err
-}
-
-func newRootCmd(version string) *cobra.Command {
+// NewRootCmd builds the root command. Errors — from a RunE body, a
+// PersistentPreRunE check, flag parsing, or the unknown-command handler — are
+// rendered as the family's structured JSON on stderr exactly once by
+// libcli.Run, which also sets the exit code. (cobra's own printing is silenced
+// by NewRoot.)
+func NewRootCmd(version string) *cobra.Command {
 	g := &GlobalFlags{}
 
 	root := libcli.NewRoot(libcli.Options{
@@ -96,7 +73,8 @@ func newRootCmd(version string) *cobra.Command {
 	pf.StringVar(&g.BaseURL, "base-url", "", "override the API base URL (testing)")
 	_ = pf.MarkHidden("base-url")
 
-	// RunE wrappers render structured errors; Execute just sets the exit code.
+	// RunE wrappers return structured errors; libcli.Run renders them once and
+	// sets the exit code.
 	cobra.EnableCommandSorting = false
 
 	registerUsage(root)
@@ -120,15 +98,27 @@ func newRootCmd(version string) *cobra.Command {
 	// command tree), so `agent-vercel <domain> usage` works uniformly.
 	attachDomainUsage(root)
 
-	// Surface flag-parse errors as fixable_by: agent; Execute renders them.
+	// Surface flag-parse errors as fixable_by: agent; libcli.Run renders them.
 	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
 		return agenterrors.Wrap(err, agenterrors.FixableByAgent)
 	})
 
+	// An unknown *top-level* command never reaches NewRoot's RunE handler:
+	// cobra's default Args validator (legacyArgs) rejects it first with a bare,
+	// hintless "unknown command" error. Replace that validator so the root emits
+	// the same structured, hinted error the domain groups do; libcli.Run then
+	// renders it once.
+	root.Args = func(cmd *cobra.Command, args []string) error {
+		if len(args) == 0 {
+			return nil
+		}
+		return agenterrors.Newf(agenterrors.FixableByAgent,
+			"unknown command %q for %q", args[0], cmd.CommandPath()).
+			WithHint("run 'agent-vercel usage' to see the available domains")
+	}
+
 	return root
 }
-
-func writeErr(err error) { output.WriteError(os.Stderr, err) }
 
 // handleUnknownSubcommand returns a structured error listing valid subcommands
 // rather than cobra's bare help text, matching the family convention.

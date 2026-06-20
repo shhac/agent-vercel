@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	output "github.com/shhac/lib-agent-output"
 )
 
 // execCLI runs the root command in-process against the given args, capturing
@@ -33,7 +35,13 @@ func execCLI(t *testing.T, baseURL string, args ...string) (stdout, stderr strin
 	os.Stdout, os.Stderr = wOut, wErr
 	os.Args = append([]string{"agent-vercel"}, full...)
 
-	runErr := Execute("test")
+	// Mirror libcli.Run in-process: execute the root, then render any error to
+	// stderr exactly once via the shared sink — but return it instead of
+	// os.Exit so the test can assert on both the structured stderr and the err.
+	runErr := NewRootCmd("test").Execute()
+	if runErr != nil {
+		output.WriteError(os.Stderr, runErr)
+	}
 
 	_ = wOut.Close()
 	_ = wErr.Close()
