@@ -6,7 +6,9 @@
   meta line `{"@pagination":{"has_more":true,"next_cursor":"<cursor>"}}`. Pass
   that value back via `--cursor <next_cursor>` to fetch the next page, or pass
   `--all` to follow every page automatically (capped; if the cap is hit a final
-  `@pagination` cursor is still emitted so you can resume).
+  `@pagination` cursor is still emitted so you can resume). With
+  `--format json|yaml` on a list command, output is wrapped in a single envelope
+  document `{"data":[…], "@pagination":…}` instead of NDJSON lines.
 - **Single resources → pretty JSON.** Override with `--format json|yaml|jsonl`.
 - **Confirmations** (writes) are JSON objects too (e.g. `{"removed":"…"}`).
 
