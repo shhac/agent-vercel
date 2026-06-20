@@ -215,8 +215,11 @@ func readNewToken(form bool) (string, error) {
 	if form {
 		v, err := promptSecret("agent-vercel", "Paste your Vercel access token:")
 		if err != nil {
-			return "", agenterrors.New("token entry was cancelled", agenterrors.FixableByHuman).
-				WithHint("rerun 'agent-vercel auth add --form' and paste the token into the dialog")
+			fixableBy, hint := dialog.Classify(err)
+			if hint == "" {
+				hint = "rerun 'agent-vercel auth add --form' and paste the token into the dialog"
+			}
+			return "", agenterrors.Newf(fixableBy, "token entry failed: %v", err).WithHint(hint)
 		}
 		if v = strings.TrimSpace(v); v != "" {
 			return v, nil

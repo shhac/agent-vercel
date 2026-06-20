@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"errors"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/shhac/agent-vercel/internal/credential"
 	"github.com/shhac/agent-vercel/internal/mockvercel"
+	clidialog "github.com/shhac/lib-agent-cli/dialog"
 )
 
 func TestAPICallGetUngated(t *testing.T) {
@@ -159,7 +159,7 @@ func TestAuthAddFormCancelled(t *testing.T) {
 	newCredStore = func() (*credential.Store, error) { return store, nil }
 	t.Cleanup(func() { newCredStore = oldStore })
 	oldPrompt := promptSecret
-	promptSecret = func(_, _ string) (string, error) { return "", errors.New("cancelled") }
+	promptSecret = func(_, _ string) (string, error) { return "", clidialog.ErrCancelled }
 	t.Cleanup(func() { promptSecret = oldPrompt })
 
 	_, errOut, err := execCLI(t, srv.URL, "auth", "add", "--form")
@@ -167,11 +167,13 @@ func TestAuthAddFormCancelled(t *testing.T) {
 		t.Fatal("expected cancellation error")
 	}
 	m := decodeJSON(t, errOut)
-	if m["fixable_by"] != "human" {
-		t.Fatalf("cancel should be human-fixable: %v", m)
+	// As of lib-agent-cli v0.4.0 a user-cancelled dialog is a retry (re-running
+	// pops the prompt again), classified via dialog.Classify.
+	if m["fixable_by"] != "retry" {
+		t.Fatalf("cancel should be retry-fixable: %v", m)
 	}
-	if h, _ := m["hint"].(string); !strings.Contains(h, "--form") {
-		t.Fatalf("hint should name --form: %q", h)
+	if h, _ := m["hint"].(string); h == "" {
+		t.Fatalf("cancel should carry a hint: %v", m)
 	}
 }
 
