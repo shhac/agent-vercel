@@ -9,7 +9,6 @@ import (
 	"github.com/shhac/agent-vercel/internal/credential"
 	"github.com/shhac/agent-vercel/internal/dialog"
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
-	"github.com/shhac/agent-vercel/internal/output"
 	"github.com/shhac/agent-vercel/internal/vercel"
 	"github.com/spf13/cobra"
 )
@@ -112,9 +111,9 @@ func registerAuth(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return agenterrors.Wrap(err, agenterrors.FixableByHuman)
 			}
-			w := output.NewNDJSONWriter(os.Stdout)
+			rows := make([]any, 0, len(creds.Auths))
 			for _, a := range creds.Auths {
-				_ = w.WriteItem(map[string]any{
+				rows = append(rows, map[string]any{
 					"label":         a.Label,
 					"type":          string(a.Type),
 					"default":       a.Label == creds.DefaultAuth,
@@ -122,7 +121,7 @@ func registerAuth(root *cobra.Command, g *GlobalFlags) {
 					"secret_status": string(statuses[a.Label]),
 				})
 			}
-			return nil
+			return emitList(g, rows, nil)
 		},
 	}
 

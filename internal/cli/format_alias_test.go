@@ -56,6 +56,31 @@ func TestFormatAliasesAccepted(t *testing.T) {
 	}
 }
 
+// TestListFormatHonored pins that a list command (scope list) routes through
+// emitList, so --format yaml/json reshapes the output instead of always emitting
+// NDJSON. Regression guard: scope/auth list once wrote NDJSON directly and
+// silently ignored --format.
+func TestListFormatHonored(t *testing.T) {
+	srv := httptest.NewServer(mockvercel.New())
+	defer srv.Close()
+
+	out, _, err := execCLI(t, srv.URL, "--format", "yaml", "scope", "list")
+	if err != nil {
+		t.Fatalf("scope list --format yaml: %v", err)
+	}
+	if s := strings.TrimSpace(out); strings.HasPrefix(s, "{") || !strings.Contains(s, "data:") {
+		t.Fatalf("scope list --format yaml should emit a YAML envelope, got:\n%s", out)
+	}
+
+	out, _, err = execCLI(t, srv.URL, "--format", "json", "scope", "list")
+	if err != nil {
+		t.Fatalf("scope list --format json: %v", err)
+	}
+	if m := decodeJSON(t, out); m["data"] == nil {
+		t.Fatalf("scope list --format json should emit a {\"data\":[…]} envelope, got:\n%s", out)
+	}
+}
+
 func TestFormatInvalidStillRejected(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New())
 	defer srv.Close()

@@ -1,10 +1,7 @@
 package cli
 
 import (
-	"os"
-
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
-	"github.com/shhac/agent-vercel/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -32,16 +29,16 @@ func registerScope(root *cobra.Command, g *GlobalFlags) {
 			if err != nil {
 				return err
 			}
-			w := output.NewNDJSONWriter(os.Stdout)
+			rows := make([]any, 0, len(teams))
 			for _, t := range teams {
-				_ = w.WriteItem(map[string]any{
+				rows = append(rows, map[string]any{
 					"id":      t.ID,
 					"slug":    t.Slug,
 					"name":    t.Name,
 					"default": t.Slug == r.creds.DefaultScope,
 				})
 			}
-			return nil
+			return emitList(g, rows, nil)
 		},
 	}
 
