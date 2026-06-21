@@ -203,12 +203,12 @@ func envGetCmd(g *GlobalFlags) *cobra.Command {
 				}
 			}
 
-			format, err := resolveEnvGetFormat(g.Format)
+			format, err := output.ResolveFormat(g.Format, output.FormatNDJSON)
 			if err != nil {
 				return err
 			}
 
-			if format == "ndjson" {
+			if format == output.FormatNDJSON {
 				nw := output.NewNDJSONWriter(os.Stdout)
 				for _, s := range slots {
 					if s.unresolved {
@@ -257,15 +257,6 @@ func envGetCmd(g *GlobalFlags) *cobra.Command {
 	return cmd
 }
 
-func resolveEnvGetFormat(format string) (string, error) {
-	if format == "" || format == "jsonl" || format == "ndjson" {
-		return "ndjson", nil
-	}
-	if format == "json" || format == "yaml" {
-		return format, nil
-	}
-	return "", agenterrors.Newf(agenterrors.FixableByAgent, "unknown format %q; valid: json, yaml, ndjson/jsonl", format)
-}
 
 func envDiffCmd(g *GlobalFlags) *cobra.Command {
 	var environments string

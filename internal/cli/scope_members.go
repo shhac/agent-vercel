@@ -93,9 +93,9 @@ func scopeMemberListCmd(g *GlobalFlags) *cobra.Command {
 
 func scopeMemberGetCmd(g *GlobalFlags) *cobra.Command {
 	return &cobra.Command{
-		Use:   "get <id|email|username>",
-		Short: "Show one member of the active team scope (matched by id, email, or username)",
-		Args:  cobra.ExactArgs(1),
+		Use:   "get <id|email|username>...",
+		Short: "Show one or more members of the active team scope (matched by id, email, or username)",
+		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			r, err := resolveClient(g)
 			if err != nil {
@@ -113,25 +113,19 @@ func scopeMemberGetCmd(g *GlobalFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			needle := args[0]
-			for _, raw := range items {
-				var m rawMember
-				if json.Unmarshal(raw, &m) != nil {
-					continue
-				}
-				if m.UID == needle || m.Email == needle || m.Username == needle {
-					if g.Full {
-						return printRaw(g, raw)
+			return libcli.EntityGet(os.Stdout, g.Format, args, func(id string) (any, error) {
+				for _, raw := range items {
+					var m rawMember
+					if json.Unmarshal(raw, &m) != nil {
+						continue
 					}
-					compact, cerr := compactMember(raw)
-					if cerr != nil {
-						return cerr
+					if m.UID == id || m.Email == id || m.Username == id {
+						return resolveRawAsAny(g, raw, compactMember)
 					}
-					return libcli.EmitItem(os.Stdout, g.Format, compact)
 				}
-			}
-			return agenterrors.Newf(agenterrors.FixableByAgent, "no member matches %q in this team", needle).
-				WithHint("run 'agent-vercel scope member list' to list members")
+				return nil, agenterrors.Newf(agenterrors.FixableByAgent, "no member matches %q in this team", id).
+					WithHint("run 'agent-vercel scope member list' to list members")
+			})
 		},
 	}
 }

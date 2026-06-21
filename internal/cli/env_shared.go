@@ -48,21 +48,23 @@ func envSharedListCmd(g *GlobalFlags) *cobra.Command {
 func envSharedGetCmd(g *GlobalFlags) *cobra.Command {
 	var decrypt bool
 	cmd := &cobra.Command{
-		Use:   "get <key|id>",
-		Short: "Get one shared environment variable, matched by key or id",
-		Args:  cobra.ExactArgs(1),
+		Use:   "get <key|id>...",
+		Short: "Get one or more shared environment variables, matched by key or id",
+		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			vars, err := fetchSharedEnv(g, cmd, decrypt)
 			if err != nil {
 				return err
 			}
-			for _, e := range vars {
-				if e.Key == args[0] || e.ID == args[0] {
-					return libcli.EmitItem(os.Stdout, g.Format, compactSharedEnv(e, decrypt))
+			return libcli.EntityGet(os.Stdout, g.Format, args, func(id string) (any, error) {
+				for _, e := range vars {
+					if e.Key == id || e.ID == id {
+						return compactSharedEnv(e, decrypt), nil
+					}
 				}
-			}
-			return agenterrors.Newf(agenterrors.FixableByAgent, "no shared env var %q in this team", args[0]).
-				WithHint("run 'agent-vercel env shared list' to see keys")
+				return nil, agenterrors.Newf(agenterrors.FixableByAgent, "no shared env var %q in this team", id).
+					WithHint("run 'agent-vercel env shared list' to see keys")
+			})
 		},
 	}
 	cmd.Flags().BoolVar(&decrypt, "decrypt", false, "include the decrypted value")

@@ -79,12 +79,19 @@ func TestEnvSharedGetNotFound(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New())
 	defer srv.Close()
 
-	_, errOut, err := execCLI(t, srv.URL, "env", "shared", "get", "NOPE")
-	if err == nil {
-		t.Fatalf("expected not-found error")
+	out, _, err := execCLI(t, srv.URL, "env", "shared", "get", "NOPE")
+	if err != nil {
+		t.Fatalf("expected exit 0 on item-level miss, got: %v", err)
 	}
-	m := decodeJSON(t, errOut)
-	if m["fixable_by"] != "agent" {
-		t.Fatalf("expected fixable_by agent, got %v", m)
+	rows := ndjsonLines(t, out)
+	if len(rows) != 1 {
+		t.Fatalf("want 1 @unresolved row, got %d: %s", len(rows), out)
+	}
+	u, ok := rows[0]["@unresolved"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected @unresolved record, got %v", rows[0])
+	}
+	if u["fixable_by"] != "agent" {
+		t.Fatalf("expected fixable_by agent, got %v", u)
 	}
 }

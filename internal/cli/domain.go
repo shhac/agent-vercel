@@ -298,8 +298,6 @@ func compactDomain(raw json.RawMessage) (map[string]any, error) {
 	return m, nil
 }
 
-// compactProjectDomain projects one entry of the apex→project reverse map: the
-// domain name, the project it is on, verified state, and any redirect binding.
 // compactDomainConfig projects a domain's /config payload for `domain inspect`:
 // the misconfiguration flag plus SSL/ACME readiness (configuredBy,
 // acceptedChallenges — empty ⇒ a cert cannot be issued — and the recommended
@@ -329,6 +327,8 @@ func compactDomainConfig(domain string, cfg json.RawMessage) map[string]any {
 	return out
 }
 
+// compactProjectDomain projects one entry of the apex→project reverse map: the
+// domain name, the project it is on, verified state, and any redirect binding.
 func compactProjectDomain(raw json.RawMessage) (map[string]any, error) {
 	var d struct {
 		Name               string `json:"name"`
