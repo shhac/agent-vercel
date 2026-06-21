@@ -35,7 +35,7 @@ There is no command that prints the secret. That is intentional.
 | `scope current` | active scope + default credential |
 | `scope set-default <slug>` | empty arg → personal account |
 | `scope member list` | `--limit --cursor --all`; members of the active team scope — uid, username, email, role, confirmed. Needs a team scope (not the personal account) |
-| `scope member get <id\|email\|username>` | one member, matched client-side |
+| `scope member get <id\|email\|username>` | one member, matched client-side; single-arg (not multi-id). NDJSON one line by default; `--format json\|yaml` gives the object; `--full` is raw pretty-JSON passthrough |
 
 ## deployment
 
@@ -78,7 +78,7 @@ There is no command that prints the secret. That is intentional.
 | `env rm <project> <key>` * | `--environment` |
 | `env pull <project>` | `--environment` (default development), `--out` (default .env), `--git-branch` — write decrypted vars to a dotenv file |
 | `env shared list` | `--decrypt`; the team's shared env vars (defined once, linked into many projects) — key, type, target, linked projects. Distinct from per-project `env list` |
-| `env shared get <key\|id>` | `--decrypt`; one shared var by key or id |
+| `env shared get <key\|id>` | `--decrypt`; one shared var by key or id; single-arg (not multi-id). NDJSON one line by default; `--format json\|yaml` gives the object; `--full` is raw pretty-JSON passthrough |
 
 Env vars are the *application's* config (legitimately readable with `--decrypt`),
 distinct from the agent-vercel access token (never readable).

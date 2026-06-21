@@ -28,6 +28,9 @@
     per id.
   - `config get <key>...` — 1..N local config keys → one record or `@unresolved`
     per key.
+  - `scope member get` and `env shared get` stay single-arg (one id, not 1..N),
+    but still emit NDJSON one line by default (`--format json|yaml` for the
+    object). Their `--full` path is raw pretty-JSON passthrough, like `api get`.
 - **Confirmations** (writes) are JSON objects too (e.g. `{"removed":"…"}`).
 
 ## Meta lines (`@`-prefixed, trailing)
