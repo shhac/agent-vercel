@@ -65,8 +65,8 @@ agent-vercel usage                       # LLM-oriented overview
 | `scope` | `list` (`ls`), `current`, `set-default`, `member list/get` |
 | `deployment` | `list`, `get`, `checks`, `routes`, `current`, `logs`, `runtime-logs`, `promote`*, `rollback`*, `cancel`*, `redeploy`* |
 | `project` | `list`, `get`, `crons`, `custom-environments`, `protection`, `routes` |
-| `env` | `list`, `diff`, `get`, `pull`, `shared list`, `shared get`, `set`*, `rm`* |
-| `domain` | `list`, `get`, `inspect`, `records`, `cert list/get`, `projects`, `transfer`, `verify`*, `add`*, `rm`* |
+| `env` | `list`, `diff`, `get <project> <key>...` (multi-key), `pull`, `shared list`, `shared get`, `set`*, `rm`* |
+| `domain` | `list`, `get`, `inspect`, `records`, `cert list`, `cert get <id>...` (multi), `projects`, `transfer`, `verify`*, `add`*, `rm`* |
 | `alias` | `list`, `set`*, `rm`*, `bypass`* |
 | `firewall` | `config`, `attack-status`, `bypass` |
 | `cache` | `purge`* |

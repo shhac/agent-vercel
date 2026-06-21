@@ -73,7 +73,7 @@ There is no command that prints the secret. That is intentional.
 |---|---|
 | `env list <project>` | `--environment --git-branch --decrypt --custom-env` |
 | `env diff <project>` | `--environments a,b` (default production,preview) |
-| `env get <project> <key>` | `--environment --decrypt` |
+| `env get <project> <key>...` | `--environment --decrypt`; 1..N keys, project scope is fixed; one NDJSON record or `@unresolved` per key in input order |
 | `env set <project> <key> <value>` * | `--environment --git-branch` |
 | `env rm <project> <key>` * | `--environment` |
 | `env pull <project>` | `--environment` (default development), `--out` (default .env), `--git-branch` — write decrypted vars to a dotenv file |
@@ -96,7 +96,7 @@ distinct from the agent-vercel access token (never readable).
 | `domain verify <domain> --project <p>` * | |
 | `domain add <project> <domain>` * | `--redirect --git-branch` |
 | `domain rm <project> <domain>` * | |
-| `domain cert get <id>` | cert expiry / autoRenew / cns |
+| `domain cert get <id>...` | cert expiry / autoRenew / cns; 1..N cert ids |
 | `domain cert list` | `--expiring <days>` filters to certs expiring within N days (0 = expired); bulk renewal triage. Spec-plausible, not live-validated — falls back to `domain cert get <id>` if the list 404s |
 | `domain projects <domain>` | the projects an apex is attached to (verified/redirect state) — wrong-project / conflict triage; `GET /v1/domains/{d}/project-domains`. Spec-plausible, not live-validated |
 | `domain transfer <domain>` | registrar registration/transfer status ("why is my transfer stuck"); `GET /v1/registrar/domains/{d}/transfer`. Spec-plausible, not live-validated |
@@ -167,4 +167,5 @@ only REST handle on it. Spec-plausible, not live-validated.
 
 | Command | Notes |
 |---|---|
-| `config get\|set\|list\|unset` | persisted defaults for `format`, `max-body-chars`, `timeout` (precedence: flag > config > built-in). Auth/scope defaults use `auth`/`scope set-default`, not config |
+| `config get <key>...` | 1..N config keys; NDJSON one record (or `@unresolved`) per key in input order |
+| `config set\|list\|unset` | persisted defaults for `format`, `max-body-chars`, `timeout` (precedence: flag > config > built-in). Auth/scope defaults use `auth`/`scope set-default`, not config |

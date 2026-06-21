@@ -12,8 +12,24 @@ import (
 const usageOverview = `agent-vercel — Vercel CLI for AI agents
 
 JSON in, JSON out, no interactivity. Lists are NDJSON (one object per line, then
-a {"@pagination":…} line when more pages exist); single resources are pretty
-JSON. Errors are JSON on stderr with fixable_by (agent|human|retry) and a hint.
+a {"@pagination":…} line when more pages exist); single resources are also NDJSON
+by default (one line; was pretty JSON before — pass --format json for the
+object). Errors are JSON on stderr with fixable_by (agent|human|retry) and a
+hint.
+
+GET (SINGLE + MULTI)
+  get <id>... takes one or more ids and returns one result per id, in input
+  order. Default output is NDJSON: one line per id — the record, or
+  {"@unresolved":{"id","reason","fixable_by","hint"?}} for an id that couldn't
+  be resolved (e.g. not found / bad id). --format json|yaml collapses to one
+  {"data":[…], "@unresolved":[…]} envelope. A single get <id> is just the
+  one-element case. Item-level misses stay on stdout and exit 0; only a
+  command-level failure (auth, network) goes to stderr with exit 1 and empty
+  stdout.
+
+  env get <project> <key>...  — scope fixed (project), then 1..N keys
+  domain cert get <id>...     — 1..N cert ids
+  config get <key>...         — 1..N local config keys
 
 CREDENTIAL vs SCOPE (two separate axes)
   One Vercel credential reaches many teams. The credential is the secret; the
@@ -34,7 +50,7 @@ SETUP (once)
 CORE DOMAINS (see design-docs/cli-design.md)
   deployment   list | get | checks | routes | logs | runtime-logs | current | promote* | rollback* | cancel* | redeploy*
   project      list | get | crons | custom-environments | protection | routes
-  env          list | diff | get | pull | shared list/get | set* | rm*
+  env          list | diff | get <project> <key>... | pull | shared list/get | set* | rm*
   domain       list | get | inspect | records | cert list/get | projects | transfer | verify* | add* | rm*
   alias        list | set* | rm* | bypass*
   firewall     config <project> | attack-status <project> | bypass <project>   (WAF triage)

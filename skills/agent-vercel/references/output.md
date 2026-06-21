@@ -9,7 +9,25 @@
   `@pagination` cursor is still emitted so you can resume). With
   `--format json|yaml` on a list command, output is wrapped in a single envelope
   document `{"data":[…], "@pagination":…}` instead of NDJSON lines.
-- **Single resources → pretty JSON.** Override with `--format json|yaml|jsonl`.
+- **Single resources → NDJSON** (one line). `--format json` gives the pretty
+  object; `--format yaml` gives YAML. (Was pretty JSON before Phase 3.)
+- **Get (single + multi).** `get <id>...` takes one or more ids and returns one
+  result per id, in input order. Default output is NDJSON: one line per id —
+  the record, or `{"@unresolved":{"id","reason","fixable_by","hint"?}}` for an
+  id that couldn't be resolved (e.g. not found / bad id). `--format json|yaml`
+  collapses to one `{"data":[…], "@unresolved":[…]}` envelope. A single
+  `get <id>` is just the one-element case (NDJSON one line by default). Item-
+  level misses stay on stdout and exit 0; only a command-level failure (auth,
+  network) goes to stderr with exit 1 and empty stdout.
+
+  Vercel-specific multi-get shapes:
+  - `env get <project> <key>...` — project scope is fixed first, then 1..N keys
+    are looked up against that project's vars; one NDJSON record (or
+    `@unresolved`) per key, in input order.
+  - `domain cert get <id>...` — 1..N cert ids → one record or `@unresolved`
+    per id.
+  - `config get <key>...` — 1..N local config keys → one record or `@unresolved`
+    per key.
 - **Confirmations** (writes) are JSON objects too (e.g. `{"removed":"…"}`).
 
 ## Meta lines (`@`-prefixed, trailing)
@@ -17,7 +35,7 @@
 - `@pagination` — `{has_more, next_cursor}`.
 - `@referenced_projects` — `{prj_…: {id, name}}` so cross-project rows needn't be
   re-resolved.
-- `@unresolved` — `[…]` args that didn't resolve in a batch `get`.
+- `@unresolved` — interleaved control line `{"@unresolved":{"id","reason","fixable_by","hint"?}}` for each id that couldn't be resolved in a `get`; appears in position in the NDJSON stream, or collected into the `"@unresolved":[…]` array in the `--format json|yaml` envelope.
 
 ## Compact vs `--full`
 

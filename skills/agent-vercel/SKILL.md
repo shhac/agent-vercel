@@ -20,8 +20,20 @@ allowed-tools: Bash(agent-vercel *) Read
 # agent-vercel
 
 JSON in, JSON out, no interactivity. Lists are NDJSON (one object per line, then
-`{"@pagination":…}` when more pages exist); single resources are pretty JSON.
+`{"@pagination":…}` when more pages exist); single resources are NDJSON by
+default (one line — pass `--format json` for the pretty object).
 Errors are JSON on stderr with `fixable_by: agent|human|retry` and a `hint`.
+
+**Get (single + multi).** `get <id>...` takes one or more ids and returns one
+result per id, in input order. Default output is NDJSON: one line per id — the
+record, or `{"@unresolved":{"id","reason","fixable_by","hint"?}}` for an id that
+couldn't be resolved (e.g. not found / bad id). `--format json|yaml` collapses
+to one `{"data":[…], "@unresolved":[…]}` envelope. Item-level misses stay on
+stdout and exit 0; only a command-level failure (auth, network) goes to stderr
+with exit 1 and empty stdout.
+
+`env get <project> <key>...` fixes the project scope first, then resolves 1..N
+keys from that project's vars — one NDJSON record (or `@unresolved`) per key.
 
 Safety: read freely (`list`, `get`, `checks`, `routes`, `current`, `logs`,
 `runtime-logs`, `diff`, `inspect`, `records`, `cert`, `protection`, `projects`,
