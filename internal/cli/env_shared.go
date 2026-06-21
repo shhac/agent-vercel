@@ -3,8 +3,10 @@ package cli
 import (
 	"encoding/json"
 	"net/url"
+	"os"
 
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
+	libcli "github.com/shhac/lib-agent-cli/cli"
 	"github.com/spf13/cobra"
 )
 
@@ -56,7 +58,7 @@ func envSharedGetCmd(g *GlobalFlags) *cobra.Command {
 			}
 			for _, e := range vars {
 				if e.Key == args[0] || e.ID == args[0] {
-					return printSingle(g, compactSharedEnv(e, decrypt))
+					return libcli.EmitItem(os.Stdout, g.Format, compactSharedEnv(e, decrypt))
 				}
 			}
 			return agenterrors.Newf(agenterrors.FixableByAgent, "no shared env var %q in this team", args[0]).

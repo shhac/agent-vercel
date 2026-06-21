@@ -3,11 +3,13 @@ package cli
 import (
 	"encoding/json"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
 	"github.com/shhac/agent-vercel/internal/vercel"
+	libcli "github.com/shhac/lib-agent-cli/cli"
 	"github.com/spf13/cobra"
 )
 
@@ -118,7 +120,14 @@ func scopeMemberGetCmd(g *GlobalFlags) *cobra.Command {
 					continue
 				}
 				if m.UID == needle || m.Email == needle || m.Username == needle {
-					return getOne(g, raw, compactMember)
+					if g.Full {
+						return printRaw(g, raw)
+					}
+					compact, cerr := compactMember(raw)
+					if cerr != nil {
+						return cerr
+					}
+					return libcli.EmitItem(os.Stdout, g.Format, compact)
 				}
 			}
 			return agenterrors.Newf(agenterrors.FixableByAgent, "no member matches %q in this team", needle).
