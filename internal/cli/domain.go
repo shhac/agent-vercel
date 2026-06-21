@@ -157,13 +157,17 @@ func domainCertListCmd(g *GlobalFlags) *cobra.Command {
 
 func domainCertGetCmd(g *GlobalFlags) *cobra.Command {
 	return &cobra.Command{
-		Use:   "get <id>",
-		Short: "Get a certificate (expiry, autoRenew, covered names)",
-		Args:  cobra.ExactArgs(1),
+		Use:   "get <id>...",
+		Short: "Get one or more certificates (expiry, autoRenew, covered names)",
+		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return emitOne(g, func(c *vercel.Client) (json.RawMessage, error) {
-				return c.GetCert(cmd.Context(), args[0])
-			}, compactCert)
+			return GetEntities(g, cmd.Context(), args, func(ctx context.Context, c *vercel.Client, id string) (any, error) {
+				raw, err := c.GetCert(ctx, id)
+				if err != nil {
+					return nil, err
+				}
+				return resolveRawAsAny(g, raw, compactCert)
+			})
 		},
 	}
 }
