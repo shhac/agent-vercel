@@ -73,16 +73,26 @@ func registerConfig(root *cobra.Command, g *GlobalFlags) {
 	}
 
 	get := &cobra.Command{
-		Use:   "get <key>",
-		Short: "Read one setting",
-		Args:  cobra.ExactArgs(1),
+		Use:   "get <key>...",
+		Short: "Read one or more settings",
+		Args:  cobra.MinimumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
-			v, ok := loadConfig()[args[0]]
-			if !ok {
-				return agenterrors.Newf(agenterrors.FixableByAgent, "no setting %q", args[0]).
-					WithHint("run 'agent-vercel config list' to see settings")
+			cfg := loadConfig()
+			nw := output.NewNDJSONWriter(os.Stdout)
+			for _, key := range args {
+				if v, ok := cfg[key]; ok {
+					_ = nw.WriteItem(map[string]any{"key": key, "value": v})
+				} else {
+					_ = nw.WriteItem(map[string]any{
+						"@unresolved": map[string]any{
+							"id":         key,
+							"reason":     "no setting " + key,
+							"fixable_by": "agent",
+						},
+					})
+				}
 			}
-			return printSingle(g, map[string]any{"key": args[0], "value": v})
+			return nil
 		},
 	}
 

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
+	"github.com/shhac/agent-vercel/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -170,38 +171,100 @@ func envGetCmd(g *GlobalFlags) *cobra.Command {
 	var environment string
 	var decrypt bool
 	cmd := &cobra.Command{
-		Use:   "get <project> <key>",
-		Short: "Get one environment variable (across or within an environment)",
-		Args:  cobra.ExactArgs(2),
+		Use:   "get <project> <key>...",
+		Short: "Get one or more environment variables (one fixed project scope, then 1..N keys)",
+		Args:  cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			_, envs, err := fetchEnv(g, cmd, args[0], "", "", decrypt)
+			project, keys := args[0], args[1:]
+			_, envs, err := fetchEnv(g, cmd, project, "", "", decrypt)
 			if err != nil {
 				return err
 			}
-			var matches []any
+			// Build an index: key → matching env records (filtered by --environment)
+			byKey := make(map[string][]any, len(keys))
 			for _, e := range envs {
-				if e.Key != args[1] {
-					continue
-				}
 				if environment != "" && !targets(e)[environment] {
 					continue
 				}
-				matches = append(matches, compactEnv(e, decrypt))
+				byKey[e.Key] = append(byKey[e.Key], compactEnv(e, decrypt))
 			}
-			switch len(matches) {
-			case 0:
-				return agenterrors.Newf(agenterrors.FixableByAgent, "no env var %q in project %q", args[1], args[0]).
-					WithHint("run 'agent-vercel env list " + args[0] + "' to see keys")
-			case 1:
-				return printSingle(g, matches[0])
-			default:
-				return emitList(g, matches, nil)
+
+			type slot struct {
+				records    []any
+				unresolved bool
+				key        string
 			}
+			slots := make([]slot, 0, len(keys))
+			for _, k := range keys {
+				if recs, ok := byKey[k]; ok {
+					slots = append(slots, slot{records: recs, key: k})
+				} else {
+					slots = append(slots, slot{unresolved: true, key: k})
+				}
+			}
+
+			format, err := resolveEnvGetFormat(g.Format)
+			if err != nil {
+				return err
+			}
+
+			if format == "ndjson" {
+				nw := output.NewNDJSONWriter(os.Stdout)
+				for _, s := range slots {
+					if s.unresolved {
+						_ = nw.WriteItem(map[string]any{
+							"@unresolved": map[string]any{
+								"id":         s.key,
+								"reason":     "no env var " + s.key + " in project " + project,
+								"fixable_by": "agent",
+							},
+						})
+						continue
+					}
+					for _, rec := range s.records {
+						_ = nw.WriteItem(rec)
+					}
+				}
+				return nil
+			}
+
+			// json/yaml: {data, @unresolved} envelope
+			var data []any
+			var unresolved []any
+			for _, s := range slots {
+				if s.unresolved {
+					unresolved = append(unresolved, map[string]any{
+						"id":         s.key,
+						"reason":     "no env var " + s.key + " in project " + project,
+						"fixable_by": "agent",
+					})
+					continue
+				}
+				data = append(data, s.records...)
+			}
+			if data == nil {
+				data = []any{}
+			}
+			env := map[string]any{"data": data}
+			if len(unresolved) > 0 {
+				env["@unresolved"] = unresolved
+			}
+			return printSingle(g, env)
 		},
 	}
 	cmd.Flags().StringVar(&environment, "environment", "", "limit to this environment")
 	cmd.Flags().BoolVar(&decrypt, "decrypt", false, "include the decrypted value")
 	return cmd
+}
+
+func resolveEnvGetFormat(format string) (string, error) {
+	if format == "" || format == "jsonl" || format == "ndjson" {
+		return "ndjson", nil
+	}
+	if format == "json" || format == "yaml" {
+		return format, nil
+	}
+	return "", agenterrors.Newf(agenterrors.FixableByAgent, "unknown format %q; valid: json, yaml, ndjson/jsonl", format)
 }
 
 func envDiffCmd(g *GlobalFlags) *cobra.Command {

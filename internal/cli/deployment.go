@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"net/url"
 	"strconv"
@@ -98,13 +99,17 @@ func deploymentListCmd(g *GlobalFlags) *cobra.Command {
 
 func deploymentGetCmd(g *GlobalFlags) *cobra.Command {
 	return &cobra.Command{
-		Use:   "get <id|url>",
-		Short: "Get one deployment",
-		Args:  cobra.ExactArgs(1),
+		Use:   "get <id|url>...",
+		Short: "Get one or more deployments",
+		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return emitOne(g, func(c *vercel.Client) (json.RawMessage, error) {
-				return c.GetDeployment(cmd.Context(), cleanRef(args[0]))
-			}, compactDeployment)
+			return GetEntities(g, cmd.Context(), args, func(ctx context.Context, c *vercel.Client, id string) (any, error) {
+				raw, err := c.GetDeployment(ctx, cleanRef(id))
+				if err != nil {
+					return nil, err
+				}
+				return resolveRawAsAny(g, raw, compactDeployment)
+			})
 		},
 	}
 }

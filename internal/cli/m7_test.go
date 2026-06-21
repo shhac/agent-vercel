@@ -52,14 +52,19 @@ func TestConfigRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get: %v", err)
 	}
-	if m := decodeJSON(t, out); m["value"] != "5000" {
-		t.Fatalf("config get = %v", m)
+	if rows := ndjsonLines(t, out); len(rows) != 1 || rows[0]["value"] != "5000" {
+		t.Fatalf("config get = %v", out)
 	}
 	if _, _, err := execCLI(t, srv.URL, "config", "unset", "max-body-chars"); err != nil {
 		t.Fatalf("unset: %v", err)
 	}
-	if _, _, err := execCLI(t, srv.URL, "config", "get", "max-body-chars"); err == nil {
-		t.Fatal("expected missing after unset")
+	// After unset, config get emits @unresolved on stdout, exit 0.
+	unsetOut, _, err2 := execCLI(t, srv.URL, "config", "get", "max-body-chars")
+	if err2 != nil {
+		t.Fatalf("config get after unset should exit 0 (got @unresolved): %v", err2)
+	}
+	if rows := ndjsonLines(t, unsetOut); len(rows) != 1 || rows[0]["@unresolved"] == nil {
+		t.Fatalf("expected @unresolved for missing config key: %v", unsetOut)
 	}
 }
 

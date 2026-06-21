@@ -23,9 +23,9 @@ func TestDomainListAndGet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get err: %v", err)
 	}
-	m := decodeJSON(t, out)
-	if m["name"] != "example.com" || m["verified"] != true {
-		t.Fatalf("domain get = %v", m)
+	rows := ndjsonLines(t, out)
+	if len(rows) != 1 || rows[0]["name"] != "example.com" || rows[0]["verified"] != true {
+		t.Fatalf("domain get = %v", out)
 	}
 }
 

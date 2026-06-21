@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"net/url"
 	"strconv"
@@ -45,13 +46,17 @@ func registerProject(root *cobra.Command, g *GlobalFlags) {
 	list.Flags().IntVar(&limit, "limit", 0, "max projects to return")
 
 	get := &cobra.Command{
-		Use:   "get <id|name>",
-		Short: "Get one project",
-		Args:  cobra.ExactArgs(1),
+		Use:   "get <id|name>...",
+		Short: "Get one or more projects",
+		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return emitOne(g, func(c *vercel.Client) (json.RawMessage, error) {
-				return c.GetProject(cmd.Context(), args[0])
-			}, compactProject)
+			return GetEntities(g, cmd.Context(), args, func(ctx context.Context, c *vercel.Client, id string) (any, error) {
+				raw, err := c.GetProject(ctx, id)
+				if err != nil {
+					return nil, err
+				}
+				return resolveRawAsAny(g, raw, compactProject)
+			})
 		},
 	}
 

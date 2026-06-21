@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"net/url"
 	"sort"
@@ -42,13 +43,17 @@ func registerDrains(root *cobra.Command, g *GlobalFlags) {
 	list.Flags().StringVar(&project, "project", "", "filter to drains targeting this project id")
 
 	get := &cobra.Command{
-		Use:   "get <id>",
-		Short: "Get one drain",
-		Args:  cobra.ExactArgs(1),
+		Use:   "get <id>...",
+		Short: "Get one or more drains",
+		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return emitOne(g, func(c *vercel.Client) (json.RawMessage, error) {
-				return c.GetDrain(cmd.Context(), args[0])
-			}, compactDrain)
+			return GetEntities(g, cmd.Context(), args, func(ctx context.Context, c *vercel.Client, id string) (any, error) {
+				raw, err := c.GetDrain(ctx, id)
+				if err != nil {
+					return nil, err
+				}
+				return resolveRawAsAny(g, raw, compactDrain)
+			})
 		},
 	}
 

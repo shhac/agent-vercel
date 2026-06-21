@@ -57,9 +57,9 @@ func TestDeploymentGet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	m := decodeJSON(t, out)
-	if m["id"] != "dpl_ready" || m["target"] != "production" {
-		t.Fatalf("get = %v", m)
+	rows := ndjsonLines(t, out)
+	if len(rows) != 1 || rows[0]["id"] != "dpl_ready" || rows[0]["target"] != "production" {
+		t.Fatalf("get = %v", out)
 	}
 }
 
@@ -67,13 +67,19 @@ func TestDeploymentGetNotFoundIsAgentError(t *testing.T) {
 	srv := httptest.NewServer(mockvercel.New())
 	defer srv.Close()
 
-	_, errOut, err := execCLI(t, srv.URL, "deployment", "get", "dpl_missing")
-	if err == nil {
-		t.Fatal("expected error")
+	// With EntityGet, a 404 (fixable_by:agent) becomes an @unresolved record
+	// on stdout, exit 0 — not an error on stderr.
+	out, _, err := execCLI(t, srv.URL, "deployment", "get", "dpl_missing")
+	if err != nil {
+		t.Fatalf("unexpected command error (should be @unresolved): %v", err)
 	}
-	m := decodeJSON(t, errOut)
-	if m["fixable_by"] != "agent" {
-		t.Fatalf("404 should map to agent: %v", m)
+	rows := ndjsonLines(t, out)
+	if len(rows) != 1 {
+		t.Fatalf("expected 1 @unresolved line, got: %s", out)
+	}
+	ur, ok := rows[0]["@unresolved"].(map[string]any)
+	if !ok || ur["fixable_by"] != "agent" {
+		t.Fatalf("404 should emit @unresolved fixable_by:agent: %v", rows[0])
 	}
 }
 
@@ -111,10 +117,11 @@ func TestProjectListAndGet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get err: %v", err)
 	}
-	m := decodeJSON(t, out)
-	if m["id"] != "prj_web" {
-		t.Fatalf("project get = %v", m)
+	rows := ndjsonLines(t, out)
+	if len(rows) != 1 || rows[0]["id"] != "prj_web" {
+		t.Fatalf("project get = %v", out)
 	}
+	m := rows[0]
 	if m["repo"] != "acme/web" || m["production_branch"] != "main" || m["node_version"] != "20.x" {
 		t.Fatalf("project get enrichment missing: %v", m)
 	}
@@ -131,7 +138,7 @@ func TestProjectListAndGet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get api err: %v", err)
 	}
-	if decodeJSON(t, apiOut)["paused"] != true {
+	if apiRows := ndjsonLines(t, apiOut); len(apiRows) != 1 || apiRows[0]["paused"] != true {
 		t.Fatalf("paused project should report paused:true: %s", apiOut)
 	}
 }

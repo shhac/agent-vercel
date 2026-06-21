@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"net/url"
 	"time"
@@ -35,13 +36,17 @@ func registerDomain(root *cobra.Command, g *GlobalFlags) {
 	listCursor, listAll = addPageFlags(list)
 
 	get := &cobra.Command{
-		Use:   "get <domain>",
-		Short: "Get one domain (verification, nameservers, verified state)",
-		Args:  cobra.ExactArgs(1),
+		Use:   "get <domain>...",
+		Short: "Get one or more domains (verification, nameservers, verified state)",
+		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return emitOne(g, func(c *vercel.Client) (json.RawMessage, error) {
-				return c.GetDomain(cmd.Context(), args[0])
-			}, compactDomain)
+			return GetEntities(g, cmd.Context(), args, func(ctx context.Context, c *vercel.Client, id string) (any, error) {
+				raw, err := c.GetDomain(ctx, id)
+				if err != nil {
+					return nil, err
+				}
+				return resolveRawAsAny(g, raw, compactDomain)
+			})
 		},
 	}
 
