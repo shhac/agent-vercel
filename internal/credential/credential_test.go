@@ -15,6 +15,71 @@ func newTestStore(t *testing.T) (*Store, *MemoryKeychain) {
 	return NewWithStore(filepath.Join(dir, "credentials.json"), kc), kc
 }
 
+// TestStore_Headless_FileFallback exercises the real credential-WRITE path
+// non-interactively. Setting the per-CLI keychain opt-out (derived by
+// lib-agent-cli from the "app.paulie.agent-vercel" service) makes the real
+// keychain backend report Available()==false, so Save deterministically takes
+// the 0600 file fallback on every platform — including darwin, where it would
+// otherwise reach the `security` CLI and its GUI prompt. This is the path that
+// previously could only be unit-tested with a MemoryKeychain.
+func TestStore_Headless_FileFallback(t *testing.T) {
+	t.Setenv("AGENT_VERCEL_NO_KEYCHAIN", "1")
+
+	kc := defaultKeychain()
+	if kc.Available() {
+		t.Fatal("keychain still Available() with AGENT_VERCEL_NO_KEYCHAIN=1; opt-out not honoured")
+	}
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "credentials.json")
+	s := NewWithStore(path, kc)
+
+	if err := s.Upsert(Auth{Label: "headless", Secret: "headless-token"}); err != nil {
+		t.Fatalf("upsert: %v", err)
+	}
+
+	// With the keychain opted out, the raw secret must land in the 0600 file —
+	// no placeholder, because nothing was pushed to a keychain.
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("credentials file not written: %v", err)
+	}
+	if mode := info.Mode().Perm(); mode != 0o600 {
+		t.Errorf("credentials mode=%o, want 0600", mode)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read file: %v", err)
+	}
+	if !strings.Contains(string(raw), "headless-token") {
+		t.Fatalf("file fallback expected the raw secret on disk; got:\n%s", raw)
+	}
+	if strings.Contains(string(raw), keychainPlaceholder) {
+		t.Fatalf("file unexpectedly contains keychain placeholder (keychain should be bypassed):\n%s", raw)
+	}
+
+	// Round-trip via the read path: Load must return the secret straight from
+	// the file (no keychain hydration).
+	creds, err := s.Load()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if len(creds.Auths) != 1 || creds.Auths[0].Secret != "headless-token" {
+		t.Fatalf("round-trip secret = %+v; want headless-token", creds.Auths)
+	}
+
+	if err := s.Remove("headless"); err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	after, err := s.Load()
+	if err != nil {
+		t.Fatalf("load after remove: %v", err)
+	}
+	if len(after.Auths) != 0 {
+		t.Fatalf("auths after remove = %+v; want none", after.Auths)
+	}
+}
+
 func TestUpsertStoresSecretInKeychainNotFile(t *testing.T) {
 	s, kc := newTestStore(t)
 	if err := s.Upsert(Auth{Label: "personal", Secret: "secret-token-abc"}); err != nil {
