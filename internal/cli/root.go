@@ -9,6 +9,7 @@ import (
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
 	"github.com/shhac/agent-vercel/internal/output"
 	libcli "github.com/shhac/lib-agent-cli/cli"
+	agentmcp "github.com/shhac/lib-agent-mcp"
 	"github.com/spf13/cobra"
 )
 
@@ -116,6 +117,11 @@ func NewRootCmd(version string) *cobra.Command {
 			"unknown command %q for %q", args[0], cmd.CommandPath()).
 			WithHint("run 'agent-vercel usage' to see the available domains")
 	}
+
+	// Expose the whole command tree as an MCP server (added last, so it reflects
+	// the complete tree). --color/--expose are output-shaping, irrelevant to a
+	// tool call, so hide them from the generated schemas.
+	root.AddCommand(agentmcp.Command(root, agentmcp.WithHiddenFlags("color", "expose")))
 
 	return root
 }
