@@ -91,4 +91,4 @@ make test-integration # opt-in live API shape checks (read-only; needs a token)
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+PolyForm Perimeter License 1.0.0 — see [LICENSE](LICENSE).
