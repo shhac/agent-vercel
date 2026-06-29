@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/shhac/agent-vercel/internal/credential"
 	agenterrors "github.com/shhac/agent-vercel/internal/errors"
 	"github.com/shhac/agent-vercel/internal/output"
 	libcli "github.com/shhac/lib-agent-cli/cli"
@@ -128,7 +129,7 @@ func NewRootCmd(version string) *cobra.Command {
 	exposeGroups(root,
 		"deployment", "project", "env", "domain", "alias", "firewall", "cache", "billing", "webhook", "drains", "edge-config", "api")
 
-	root.AddCommand(agentmcp.Command(root, agentmcp.WithHiddenFlags("color", "expose")))
+	root.AddCommand(agentmcp.Command(root, agentmcp.WithHiddenFlags("color", "expose"), agentmcp.WithOAuthKeyringService(credential.MCPKeychainService())))
 
 	return root
 }
