@@ -46,6 +46,14 @@ go install github.com/shhac/agent-vercel/cmd/agent-vercel@latest   # dev-stamped
 git clone https://github.com/shhac/agent-vercel.git && cd agent-vercel && make build
 ```
 
+### Claude Code / AI agent skill
+
+```bash
+npx skills add shhac/agent-skills --skill agent-vercel --global
+```
+
+Installs the `agent-vercel` skill globally so Claude Code (and other AI agents) can discover and use it automatically. It ships from [`shhac/agent-skills`](https://github.com/shhac/agent-skills) — the whole family's skills in one repo, so `npx skills update` checks a single source no matter how many you use. Want several at once? Run `npx skills add shhac/agent-skills --global` and pick from the list.
+
 ## Getting started
 
 ```bash
